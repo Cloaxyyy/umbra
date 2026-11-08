@@ -174,13 +174,19 @@ fn fail(msg: &str) -> Value {
     json!({ "error": msg })
 }
 
+fn is_extension(origin: &str) -> bool {
+    ORIGINS.iter().any(|p| origin.starts_with(p))
+}
+
+fn origin_allowed(origin: Option<&str>) -> bool {
+    origin.is_none_or(|o| o == "null" || is_extension(o))
+}
+
 fn handle(app: AppHandle, mut req: Request) {
     let origin = header(&req, "Origin");
-    let from_ext = origin
-        .as_deref()
-        .is_none_or(|o| ORIGINS.iter().any(|p| o.starts_with(p)));
+    let from_ext = origin_allowed(origin.as_deref());
     let host_ok = header(&req, "Host").is_some_and(|h| HOSTS.contains(&h.as_str()));
-    let origin = origin.filter(|_| from_ext);
+    let origin = origin.filter(|o| is_extension(o));
     if !from_ext || !host_ok {
         reply(
             req,
@@ -468,5 +474,14 @@ mod tests {
         );
         assert_eq!(query_u64("universeId=abc", "universeId"), None);
         assert_eq!(query_u64("", "universeId"), None);
+        assert!(origin_allowed(None));
+        assert!(origin_allowed(Some("null")));
+        assert!(origin_allowed(Some("moz-extension://4b1c-uuid")));
+        assert!(origin_allowed(Some(
+            "chrome-extension://hhndfjiapiginofjainnfgheokibklni"
+        )));
+        assert!(!origin_allowed(Some("https://www.roblox.com")));
+        assert!(!origin_allowed(Some("http://127.0.0.1:8080")));
+        assert!(!is_extension("null"));
     }
 }

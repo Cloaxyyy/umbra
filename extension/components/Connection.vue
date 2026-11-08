@@ -34,6 +34,7 @@ onMounted(() => RefreshUmbra().catch(() => {}))
             <span v-else-if="umbra.hello?.reachable" class="pill warn"><span class="dot"></span>Not connected</span>
             <span v-else class="pill"><span class="dot"></span>Offline</span>
         </div>
+        <p v-if="!umbra.state && umbra.error" class="faint small">{{ umbra.error }}</p>
         <p v-if="umbra.note" class="note" :class="umbra.note.kind" role="status">{{ umbra.note.text }}</p>
         <div class="row">
             <button
