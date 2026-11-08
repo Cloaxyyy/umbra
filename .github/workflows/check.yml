@@ -25,3 +25,9 @@ jobs:
       - run: bun run build
 
       - run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Check the browser extension
+        working-directory: extension
+        run: |
+          bun install --frozen-lockfile
+          bun run check

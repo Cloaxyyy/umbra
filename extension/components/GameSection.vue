@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Compact, LikePct, Since } from '@/utils/format'
+import { computed, onMounted, ref, watch } from 'vue'
+import { Compact, Duration, LikePct, Since } from '@/utils/format'
 import { Umbra } from '@/utils/messages'
 import { Game, UniverseOf, type GameInfo } from '@/utils/roblox'
 import { Connected, Join, Note, RefreshUmbra, umbra } from '@/utils/umbra-store'
@@ -15,6 +15,16 @@ const copied = ref('')
 const privateLink = computed(() => /privateServerLinkCode=/.test(location.href))
 const pct = computed(() => (game.value ? LikePct(game.value.upVotes, game.value.downVotes) : null))
 const fav = computed(() => !!game.value && !!umbra.state?.favorites.includes(game.value.universeId))
+const played = ref<{ secs: number; sessions: number; last: number } | null>(null)
+
+async function LoadPlaytime(universeId: number) {
+    if (!Connected()) return
+    try {
+        played.value = await Umbra.playtime(universeId)
+    } catch {
+        played.value = null
+    }
+}
 
 async function Copy(what: string, text: string) {
     try {
@@ -41,6 +51,13 @@ async function Star() {
 function Play() {
     Join(props.placeId, null, privateLink.value ? location.href : undefined)
 }
+
+watch(
+    () => [game.value?.universeId, !!umbra.state] as const,
+    ([id, ok]) => {
+        if (id && ok && !played.value) LoadPlaytime(id)
+    },
+)
 
 onMounted(async () => {
     try {
@@ -91,6 +108,10 @@ onMounted(async () => {
                 </div>
             </div>
             <p class="faint small">Created {{ Since(game.created) }} · Universe {{ game.universeId }}</p>
+            <p v-if="played?.sessions" class="note good small">
+                You've played {{ Duration(played.secs) }} over {{ played.sessions }} session{{ played.sessions === 1 ? '' : 's' }}, last
+                {{ Since(played.last) }}.
+            </p>
         </div>
         <div v-else class="card faint small">Loading game…</div>
 

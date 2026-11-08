@@ -135,6 +135,47 @@ export async function Headshots(ids: number[]): Promise<Record<number, string>> 
     return out
 }
 
+export async function GameNames(ids: number[]): Promise<Record<number, { name: string; rootPlaceId: number }>> {
+    const out: Record<number, { name: string; rootPlaceId: number }> = {}
+    for (let i = 0; i < ids.length; i += 50) {
+        const v = await Get<{ data: { id: number; name: string; rootPlaceId: number }[] }>(
+            `https://games.roblox.com/v1/games?universeIds=${ids.slice(i, i + 50).join(',')}`,
+        )
+        for (const g of v.data) out[g.id] = { name: g.name, rootPlaceId: g.rootPlaceId }
+    }
+    return out
+}
+
+export async function FriendsInGame(): Promise<
+    { id: number; name: string; avatar: string | null; game: string; placeId: number | null; jobId: string | null }[]
+> {
+    const me = await Me()
+    if (!me) throw new Error('Sign in to Roblox to see your friends.')
+    const ids = await FriendIds(me)
+    const playing: Presence[] = []
+    for (let i = 0; i < ids.length; i += 100) {
+        const chunk = await PresenceOf(ids.slice(i, i + 100))
+        playing.push(...chunk.filter((p) => p.userPresenceType === 2))
+    }
+    if (!playing.length) return []
+    const top = playing.slice(0, 40)
+    const ids2 = top.map((p) => p.userId)
+    const universes = [...new Set(top.map((p) => p.universeId).filter((u): u is number => !!u))]
+    const [names, heads, games] = await Promise.all([
+        Names(ids2),
+        Headshots(ids2).catch(() => ({}) as Record<number, string>),
+        GameNames(universes).catch(() => ({}) as Record<number, { name: string; rootPlaceId: number }>),
+    ])
+    return top.map((p) => ({
+        id: p.userId,
+        name: names[p.userId]?.displayName ?? `User ${p.userId}`,
+        avatar: heads[p.userId] ?? null,
+        game: (p.universeId && games[p.universeId]?.name) || p.lastLocation || 'In a game',
+        placeId: p.rootPlaceId ?? p.placeId,
+        jobId: p.gameId,
+    }))
+}
+
 export const User = (id: number) => Get<UserInfo>(`https://users.roblox.com/v1/users/${id}`)
 
 export async function Me(): Promise<number | null> {

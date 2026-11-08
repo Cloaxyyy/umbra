@@ -122,6 +122,8 @@ async function Handle(req: Request): Promise<unknown> {
             })
         case 'umbra.client':
             return Bridge('/v1/client', { method: 'POST', body: JSON.stringify({ pid: req.pid, action: req.action }) })
+        case 'umbra.playtime':
+            return Bridge(`/v1/playtime?universeId=${Number(req.universeId)}`)
         case 'rolimons.item':
             return Item(req.id)
         case 'rolimons.player':

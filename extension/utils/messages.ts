@@ -17,6 +17,7 @@ export const Umbra = {
     favorite: (universeId: number, rootPlaceId: number, name: string, icon: string | null) =>
         Send<{ added: boolean }>({ type: 'umbra.favorite', universeId, rootPlaceId, name, icon }),
     client: (pid: number, action: 'rejoin' | 'hop' | 'close') => Send<{ pid: number }>({ type: 'umbra.client', pid, action }),
+    playtime: (universeId: number) => Send<{ secs: number; sessions: number; last: number }>({ type: 'umbra.playtime', universeId }),
 }
 
 export const Rolimons = {

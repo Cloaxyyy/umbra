@@ -4,6 +4,7 @@ import Clients from '@/components/Clients.vue'
 import GameSection from '@/components/GameSection.vue'
 import ItemSection from '@/components/ItemSection.vue'
 import Palette from '@/components/Palette.vue'
+import FriendsPlaying from '@/components/FriendsPlaying.vue'
 import PlayAs from '@/components/PlayAs.vue'
 import UserSection from '@/components/UserSection.vue'
 import { OpenOptions } from '@/utils/messages'
@@ -95,7 +96,10 @@ onUnmounted(() => {
                 <GameSection v-if="page.kind === 'game'" :key="key" :place-id="page.placeId" :servers="f.servers" />
                 <UserSection v-else-if="page.kind === 'user'" :key="key" :user-id="page.userId" :values="f.values" />
                 <ItemSection v-else-if="page.kind === 'item'" :key="key" :id="page.id" :item-type="page.itemType" :values="f.values" />
-                <PlayAs v-else />
+                <template v-else>
+                    <PlayAs />
+                    <FriendsPlaying />
+                </template>
                 <Clients v-if="umbra.state" />
                 <div class="card row between">
                     <span class="muted small">Themes, features and the Umbra connection</span>

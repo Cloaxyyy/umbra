@@ -40,3 +40,16 @@ jobs:
           releaseDraft: false
           prerelease: false
           tauriScript: bun run tauri
+
+      - name: Build the browser extension
+        working-directory: extension
+        run: |
+          bun install --frozen-lockfile
+          bun run zip
+          bun run zip:firefox
+
+      - name: Attach the browser extension
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" extension/.output/*-chrome.zip extension/.output/*-firefox.zip --clobber

@@ -6,6 +6,7 @@ export interface UmbraAccount {
     displayName: string
     avatar: string | null
     profileId: string | null
+    autoRejoin?: boolean
 }
 
 export interface UmbraProfile {
@@ -74,6 +75,7 @@ export type Request =
     | { type: 'umbra.launch'; userIds: number[]; target: Target; profileId?: string | null }
     | { type: 'umbra.favorite'; universeId: number; rootPlaceId: number; name: string; icon: string | null }
     | { type: 'umbra.client'; pid: number; action: 'rejoin' | 'hop' | 'close' }
+    | { type: 'umbra.playtime'; universeId: number }
     | { type: 'rolimons.item'; id: number }
     | { type: 'rolimons.player'; id: number }
     | { type: 'options.open' }
