@@ -2,11 +2,12 @@
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { open } from '@tauri-apps/plugin-dialog'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { api, type Flags, type Mod, type Profile, type Status } from '../api'
+import { api, type Flags, type Mod, type Profile, type ProfileTheme, type Status } from '../api'
 import Icon from '../components/Icon.vue'
 import { ApplyOption, ApplyPreset, CONTROLS, CurrentOption, IgnoredFlags, PRESETS } from '../flags'
 import { Ago, Dur, Mb } from '../format'
 import { ActiveAccount, LaunchMany, RefreshProfiles, RefreshRunning, store, Toast } from '../store'
+import { THEME_OPTIONS } from '../theme'
 
 type Tab = 'general' | 'tuning' | 'mods' | 'activity'
 const COLORS = ['#9580ff', '#62d4ff', '#3fe0a0', '#ffbd5a', '#ff6283', '#ff8ad8', '#f5f5f7', '#7d8cff']
@@ -77,6 +78,11 @@ async function Save() {
 
 function SetColor(c: string) {
     draft.value!.color = c
+    SaveSoon()
+}
+function FlipTheme(key: keyof ProfileTheme) {
+    const d = draft.value!
+    d.theme = { ...d.theme, [key]: !d.theme[key] }
     SaveSoon()
 }
 function ResetFont() {
@@ -557,6 +563,27 @@ onUnmounted(() => {
                         <p class="eyebrow" style="margin-top: 6px">Current</p>
                         <p class="cur">{{ draft.customFont ?? 'Default' }}</p>
                     </div>
+
+                    <div class="font card stack" style="gap: 14px">
+                        <div>
+                            <h2><Icon name="sparkle" :size="15" /> Umbra theme</h2>
+                            <p class="muted small">Restyles parts of Roblox for this instance. Everything is off until you turn it on.</p>
+                        </div>
+                        <div v-for="o in THEME_OPTIONS" :key="o.key" class="theme-row">
+                            <div>
+                                <h3>{{ o.label }}</h3>
+                                <p class="muted small">{{ o.hint }}</p>
+                            </div>
+                            <button
+                                class="switch"
+                                role="switch"
+                                :aria-checked="draft.theme[o.key]"
+                                :aria-label="o.label"
+                                @click="FlipTheme(o.key)"
+                            ></button>
+                        </div>
+                        <p class="faint small">Applies the next time this instance starts. Close its Roblox windows first.</p>
+                    </div>
                 </template>
 
                 <template v-else>
@@ -1010,6 +1037,15 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+.theme-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.theme-row h3 {
+    font-size: 14px;
 }
 .cur {
     font-weight: 800;

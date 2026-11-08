@@ -77,9 +77,18 @@ function SetAccent(hex: string) {
     ApplyAccent(hex)
     Save()
 }
-function Flip(
-    key: 'multiInstance' | 'serverLocation' | 'discordEnabled' | 'discordJoinButton' | 'closeToTray' | 'autoCheckUpdates' | 'friendAlerts',
-) {
+type Toggle =
+    | 'multiInstance'
+    | 'serverLocation'
+    | 'discordEnabled'
+    | 'discordJoinButton'
+    | 'closeToTray'
+    | 'autoCheckUpdates'
+    | 'friendAlerts'
+    | 'overlayFriendsHere'
+    | 'overlayRecent'
+    | 'overlayServerIp'
+function Flip(key: Toggle) {
     s.value![key] = !s.value![key]
     Save()
     if (key === 'friendAlerts') StartFriendAlerts(s.value!.friendAlerts)
@@ -178,6 +187,45 @@ onUnmounted(() => clearInterval(timer))
                             {{ recording ? 'Cancel' : 'Change' }}
                         </button>
                     </div>
+                </div>
+                <div v-if="s.overlayEnabled" class="setting">
+                    <div>
+                        <h3>Friends in your server</h3>
+                        <p class="muted">Lists friends who are in the same server as you on the Now tab.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.overlayFriendsHere"
+                        aria-label="Friends in your server"
+                        @click="Flip('overlayFriendsHere')"
+                    ></button>
+                </div>
+                <div v-if="s.overlayEnabled" class="setting">
+                    <div>
+                        <h3>Recent servers</h3>
+                        <p class="muted">Remembers the last servers you were in so you can jump back after a hop.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.overlayRecent"
+                        aria-label="Recent servers"
+                        @click="Flip('overlayRecent')"
+                    ></button>
+                </div>
+                <div v-if="s.overlayEnabled" class="setting">
+                    <div>
+                        <h3>Server address</h3>
+                        <p class="muted">Shows the server's IP address with a copy button.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.overlayServerIp"
+                        aria-label="Server address"
+                        @click="Flip('overlayServerIp')"
+                    ></button>
                 </div>
             </section>
 

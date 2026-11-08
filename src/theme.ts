@@ -1,3 +1,4 @@
+import type { ProfileTheme } from './api'
 export const ACCENTS = [
     { name: 'Eclipse', hex: '#9580ff' },
     { name: 'Corona', hex: '#62d4ff' },
@@ -16,3 +17,9 @@ export function ApplyAccent(hex: string) {
     root.setProperty('--accent-soft', `rgba(${rgb}, 0.14)`)
     root.setProperty('--accent-line', `rgba(${rgb}, 0.4)`)
 }
+
+export const THEME_OPTIONS: { key: keyof ProfileTheme; label: string; hint: string }[] = [
+    { key: 'cursor', label: 'Umbra cursor', hint: 'A clean flat arrow, with an accent arrow when you hover something you can click.' },
+    { key: 'tint', label: 'Accent menus', hint: 'Recolors the white art in the top bar and the Roblox menu with your Umbra accent color.' },
+    { key: 'deathSound', label: 'Umbra death sound', hint: 'Swaps the death sound for a short, soft tone made for Umbra.' },
+]

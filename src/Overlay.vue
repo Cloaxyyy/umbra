@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event'
 import { Window } from '@tauri-apps/api/window'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { api, type Account, type Friend, type Instance, type Profile } from './api'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { api, type Account, type Friend, type Instance, type Profile, type ProfileTheme } from './api'
 import Icon from './components/Icon.vue'
 import { ApplyOption, ApplyPreset, CONTROLS, CurrentOption, PRESETS } from './flags'
-import { Dur } from './format'
-import { ApplyAccent } from './theme'
+import { Ago, Dur } from './format'
+import { ApplyAccent, THEME_OPTIONS } from './theme'
 
 type Tab = 'now' | 'friends' | 'alts' | 'tuning'
 const PRIORITIES: { id: Instance['priority']; label: string }[] = [
@@ -35,6 +35,57 @@ const others = computed(() => accounts.value.filter((a) => a.userId !== client.v
 const inGame = computed(() => (friends.value ?? []).filter((f) => f.status === 2 && f.placeId))
 const session = computed(() => (game.value ? Dur(Math.max(0, Math.floor(now.value / 1000) - game.value.joinedAt)) : ''))
 const canMove = computed(() => !!client.value?.userId)
+
+const extras = ref({ friendsHere: false, recent: false, serverIp: false })
+const friendsHere = computed(() => (friends.value ?? []).filter((f) => f.gameId && f.gameId === game.value?.jobId))
+
+interface Recent {
+    placeId: number
+    jobId: string
+    name: string
+    at: number
+}
+const RECENT_KEY = 'umbra.recentServers'
+const RECENT_MAX = 8
+function ReadRecent(): Recent[] {
+    try {
+        const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]')
+        return Array.isArray(v) ? v : []
+    } catch {
+        return []
+    }
+}
+const recent = ref<Recent[]>(ReadRecent())
+const recentShown = computed(() => recent.value.filter((r) => r.jobId !== game.value?.jobId).slice(0, 5))
+watch(
+    () => [game.value?.jobId, extras.value.recent] as const,
+    ([jobId, on]) => {
+        const g = game.value
+        if (!on || !g || !jobId) return
+        const entry: Recent = { placeId: g.placeId, jobId, name: g.gameName ?? `Place ${g.placeId}`, at: Math.floor(Date.now() / 1000) }
+        recent.value = [entry, ...recent.value.filter((r) => r.jobId !== jobId)].slice(0, RECENT_MAX)
+        try {
+            localStorage.setItem(RECENT_KEY, JSON.stringify(recent.value))
+        } catch {}
+    },
+)
+function GoBack(r: Recent) {
+    const p = pid.value
+    if (!p) return
+    return Run('to', async () => (pid.value = await api.moveClient(p, 'to', r.placeId, r.jobId)), `Going back to ${r.name}.`)
+}
+async function LoadSettings() {
+    try {
+        const s = await api.getSettings()
+        ApplyAccent(s.accent)
+        hotkey.value = s.overlayHotkey
+        extras.value = { friendsHere: s.overlayFriendsHere, recent: s.overlayRecent, serverIp: s.overlayServerIp }
+    } catch {}
+}
+function FlipTheme(key: keyof ProfileTheme) {
+    const p = profile.value
+    if (p) SaveTuning({ ...p, theme: { ...p.theme, [key]: !p.theme[key] } })
+}
 
 let noteTimer = 0
 function Say(kind: 'good' | 'bad', text: string) {
@@ -171,7 +222,14 @@ async function SaveTuning(next: Profile) {
 function PickControl(id: string, idx: number) {
     const p = profile.value
     if (!p) return
-    SaveTuning({ ...p, flags: ApplyOption(CONTROLS.find((c) => c.id === id)!, p.flags, idx) })
+    SaveTuning({
+        ...p,
+        flags: ApplyOption(
+            CONTROLS.find((c) => c.id === id)!,
+            p.flags,
+            idx,
+        ),
+    })
 }
 function Preset(id: string) {
     const p = profile.value
@@ -203,17 +261,13 @@ let ticker = 0
 onMounted(async () => {
     window.addEventListener('keydown', OnKey)
     ticker = window.setInterval(() => (now.value = Date.now()), 1000)
-    unlisten = await listen<number | null>('overlay-open', (e) => {
+    unlisten = await listen<number | null>('overlay-open', async (e) => {
         confirmClose.value = false
         if (e.payload) Pick(e.payload)
-        Refresh()
-        if (tab.value === 'friends') LoadFriends()
+        await Promise.all([Refresh(), LoadSettings()])
+        if (tab.value === 'friends' || extras.value.friendsHere) LoadFriends()
     })
-    try {
-        const s = await api.getSettings()
-        ApplyAccent(s.accent)
-        hotkey.value = s.overlayHotkey
-    } catch {}
+    await LoadSettings()
     const t = await api.overlayTarget()
     if (t) pid.value = t
     Refresh()
@@ -317,6 +371,42 @@ onUnmounted(() => {
                         This client was started without a saved account, so rejoin, hop and moving aren't available.
                     </p>
 
+                    <div v-if="extras.serverIp && game?.serverIp" class="block">
+                        <div class="row between">
+                            <h3>Server address</h3>
+                            <button class="btn btn-sm" @click="Copy(game.serverIp, 'Server address')">
+                                <Icon name="copy" :size="12" />Copy
+                            </button>
+                        </div>
+                        <p class="mono small">{{ game.serverIp }}</p>
+                    </div>
+
+                    <div v-if="extras.friendsHere && client.userId" class="block">
+                        <h3>Friends in your server</h3>
+                        <p v-if="friends === null" class="faint small">Loading friends…</p>
+                        <p v-else-if="!friendsHere.length" class="faint small">No friends in this server right now.</p>
+                        <div v-for="f in friendsHere" :key="f.userId" class="item">
+                            <img v-if="f.avatar" :src="f.avatar" alt="" class="av" /><span v-else class="av"></span>
+                            <span class="itxt"
+                                ><b>{{ f.displayName }}</b
+                                ><span class="faint">@{{ f.name }}</span></span
+                            >
+                        </div>
+                    </div>
+
+                    <div v-if="extras.recent && recentShown.length" class="block">
+                        <h3>Recent servers</h3>
+                        <div v-for="r in recentShown" :key="r.jobId" class="item">
+                            <span class="itxt"
+                                ><b>{{ r.name }}</b
+                                ><span class="faint">{{ Ago(r.at) }} · {{ r.jobId.slice(0, 8) }}</span></span
+                            >
+                            <button class="btn btn-sm" :disabled="!!busy || !canMove" @click="GoBack(r)">
+                                <Icon name="enter" :size="12" />Go back
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="block">
                         <div class="row between">
                             <h3>CPU priority</h3>
@@ -407,6 +497,20 @@ onUnmounted(() => {
                                 <option v-if="CurrentOption(c, profile.flags) === -1" :value="-1">Custom</option>
                                 <option v-for="(o, i) in c.options" :key="i" :value="i">{{ o.label }}</option>
                             </select>
+                        </div>
+                        <div class="block">
+                            <h3>Umbra theme</h3>
+                            <p class="faint small">Off unless you turn it on. Applies when you rejoin.</p>
+                            <div v-for="o in THEME_OPTIONS" :key="o.key" class="ctl">
+                                <span>{{ o.label }}</span>
+                                <button
+                                    class="switch"
+                                    role="switch"
+                                    :aria-checked="profile.theme[o.key]"
+                                    :aria-label="o.label"
+                                    @click="FlipTheme(o.key)"
+                                ></button>
+                            </div>
                         </div>
                         <button class="btn btn-primary wide" :disabled="!game || !canMove || !!busy" @click="ApplyAndRejoin">
                             <Icon name="refresh" :size="14" />{{ busy === 'rejoin' ? 'Rejoining…' : 'Apply and rejoin' }}

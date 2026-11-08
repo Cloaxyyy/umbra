@@ -39,6 +39,7 @@ pub struct Profile {
     pub mods: Vec<String>,
 
     pub custom_font: Option<String>,
+    pub theme: super::theme::Theme,
     pub launches: u64,
     pub playtime_secs: u64,
     pub last_played: Option<u64>,
@@ -55,6 +56,7 @@ impl Default for Profile {
             flags: Map::new(),
             mods: vec![],
             custom_font: None,
+            theme: Default::default(),
             launches: 0,
             playtime_secs: 0,
             last_played: None,

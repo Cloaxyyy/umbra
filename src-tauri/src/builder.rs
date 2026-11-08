@@ -20,7 +20,8 @@ fn stamp_for(p: &Profile, guid: &str) -> Value {
             json!([id, files])
         })
         .collect();
-    json!({ "guid": guid, "mods": mods, "font": p.custom_font })
+    let accent = p.theme.tint.then(|| super::settings::load().accent);
+    json!({ "guid": guid, "mods": mods, "font": p.custom_font, "theme": p.theme, "accent": accent })
 }
 
 fn link_tree(src: &Path, dst: &Path) -> io::Result<()> {
@@ -37,7 +38,7 @@ fn link_tree(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn place(dst: &Path, bytes: &[u8]) -> io::Result<()> {
+pub(crate) fn place(dst: &Path, bytes: &[u8]) -> io::Result<()> {
     if let Some(p) = dst.parent() {
         fs::create_dir_all(p)?;
     }
@@ -119,6 +120,10 @@ pub fn build(p: &Profile, guid: &str) -> Result<PathBuf, String> {
             if f.is_file() {
                 apply_font(&dir, &f).map_err(|e| locked(e, &p.name))?;
             }
+        }
+        if p.theme != Default::default() {
+            let accent = want["accent"].as_str().unwrap_or_default();
+            super::theme::apply(&dir, &p.theme, accent).map_err(|e| locked(e, &p.name))?;
         }
         fs::write(dir.join(STAMP), serde_json::to_vec(&want).unwrap())
             .map_err(|e| e.to_string())?;

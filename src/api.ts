@@ -21,6 +21,9 @@ export interface Settings {
     overlayEnabled: boolean
     overlayHotkey: string
     friendAlerts: boolean
+    overlayFriendsHere: boolean
+    overlayRecent: boolean
+    overlayServerIp: boolean
 }
 
 export interface GameSession {
@@ -91,10 +94,16 @@ export interface Profile {
     flags: Flags
     mods: string[]
     customFont: string | null
+    theme: ProfileTheme
     launches: number
     playtimeSecs: number
     lastPlayed: number | null
     history: Session[]
+}
+export interface ProfileTheme {
+    cursor: boolean
+    tint: boolean
+    deathSound: boolean
 }
 export interface ProfileStore {
     defaultId: string

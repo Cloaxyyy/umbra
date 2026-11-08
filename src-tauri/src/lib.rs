@@ -18,6 +18,7 @@ mod players;
 mod profiles;
 mod roblox;
 mod settings;
+mod theme;
 mod trades;
 
 use serde::Serialize;
