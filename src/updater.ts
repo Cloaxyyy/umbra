@@ -1,7 +1,7 @@
 import { getVersion } from '@tauri-apps/api/app'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check, type Update } from '@tauri-apps/plugin-updater'
-import { reactive } from 'vue'
+import { markRaw, reactive } from 'vue'
 import { Toast } from './store'
 
 export const updates = reactive({
@@ -25,7 +25,7 @@ export async function CheckForUpdate(manual: boolean) {
     updates.error = ''
     try {
         const u = await check()
-        updates.available = u
+        updates.available = u ? markRaw(u) : null
         updates.lastChecked = Date.now()
         if (u) Toast('good', `Umbra ${u.version} is available.`)
         else if (manual) Toast('good', "You're on the latest version.")
