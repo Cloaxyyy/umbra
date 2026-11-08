@@ -24,6 +24,7 @@ const ORIGINS: &[&str] = &[
 const HOSTS: &[&str] = &["127.0.0.1:27150", "localhost:27150"];
 const CLIENT_HEADER: &str = "X-Umbra-Client";
 const CLIENT_VALUE: &str = "extension";
+const ALLOW_HEADERS: &str = "authorization, content-type, x-umbra-client";
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -157,10 +158,7 @@ fn reply(req: Request, origin: Option<&str>, status: u16, body: Value) {
     if let Some(o) = origin {
         for (k, v) in [
             ("Access-Control-Allow-Origin", o),
-            (
-                "Access-Control-Allow-Headers",
-                "authorization, content-type",
-            ),
+            ("Access-Control-Allow-Headers", ALLOW_HEADERS),
             ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"),
             ("Vary", "Origin"),
         ] {
@@ -457,6 +455,17 @@ fn client(app: &AppHandle, body: &Value) -> (u16, Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn preflight_allows_every_header_the_extension_sends() {
+        for h in [
+            "authorization",
+            "content-type",
+            &CLIENT_HEADER.to_ascii_lowercase(),
+        ] {
+            assert!(ALLOW_HEADERS.split(", ").any(|a| a == h), "{h}");
+        }
+    }
 
     #[test]
     fn labels_and_tokens() {
