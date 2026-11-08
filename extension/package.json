@@ -1,0 +1,26 @@
+{
+    "name": "umbra-extension",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "wxt",
+        "build": "wxt build",
+        "build:firefox": "wxt build -b firefox",
+        "zip": "wxt zip",
+        "zip:firefox": "wxt zip -b firefox",
+        "typecheck": "vue-tsc --noEmit",
+        "check": "vue-tsc --noEmit && wxt build",
+        "postinstall": "wxt prepare"
+    },
+    "dependencies": {
+        "vue": "3.5.45"
+    },
+    "devDependencies": {
+        "@wxt-dev/module-vue": "1.0.3",
+        "prettier": "^3.9.10",
+        "typescript": "~6.0.3",
+        "vue-tsc": "^3.3.14",
+        "wxt": "0.21.5"
+    }
+}
