@@ -27,6 +27,9 @@ pub struct Settings {
     pub overlay_recent: bool,
     pub overlay_server_ip: bool,
     pub extension_bridge: bool,
+    pub label_windows: bool,
+    pub trim_background: bool,
+    pub update_alerts: bool,
 }
 
 impl Default for Settings {
@@ -49,6 +52,9 @@ impl Default for Settings {
             overlay_recent: false,
             overlay_server_ip: false,
             extension_bridge: true,
+            label_windows: false,
+            trim_background: false,
+            update_alerts: false,
         }
     }
 }

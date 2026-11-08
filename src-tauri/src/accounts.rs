@@ -13,6 +13,8 @@ struct Stored {
 
     #[serde(default)]
     profile_id: Option<String>,
+    #[serde(default)]
+    auto_rejoin: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -23,6 +25,7 @@ pub struct Account {
     pub display_name: String,
     pub avatar: Option<String>,
     pub profile_id: Option<String>,
+    pub auto_rejoin: bool,
 }
 
 fn file() -> std::path::PathBuf {
@@ -57,6 +60,7 @@ pub async fn list() -> Vec<Account> {
             name: s.name,
             display_name: s.display_name,
             profile_id: s.profile_id,
+            auto_rejoin: s.auto_rejoin,
         })
         .collect()
 }
@@ -69,10 +73,9 @@ pub async fn add(cookie: &str) -> Result<Account, String> {
     let user = super::roblox::authenticated_user(cookie).await?;
     let enc = B64.encode(super::dpapi::protect(cookie.as_bytes())?);
     let mut list = load();
-    let profile_id = list
-        .iter()
-        .find(|s| s.user_id == user.id)
-        .and_then(|s| s.profile_id.clone());
+    let old = list.iter().find(|s| s.user_id == user.id);
+    let profile_id = old.and_then(|s| s.profile_id.clone());
+    let auto_rejoin = old.is_some_and(|s| s.auto_rejoin);
     list.retain(|s| s.user_id != user.id);
     list.push(Stored {
         user_id: user.id,
@@ -80,6 +83,7 @@ pub async fn add(cookie: &str) -> Result<Account, String> {
         display_name: user.display_name.clone(),
         cookie: enc,
         profile_id: profile_id.clone(),
+        auto_rejoin,
     });
     save(&list)?;
     Ok(Account {
@@ -88,6 +92,7 @@ pub async fn add(cookie: &str) -> Result<Account, String> {
         display_name: user.display_name,
         avatar: None,
         profile_id,
+        auto_rejoin,
     })
 }
 
@@ -105,6 +110,27 @@ pub fn set_profile(user_id: u64, profile_id: Option<String>) -> Result<(), Strin
         .ok_or("That account isn't saved anymore.")?;
     s.profile_id = profile_id;
     save(&list)
+}
+
+pub fn set_auto_rejoin(user_id: u64, on: bool) -> Result<(), String> {
+    let mut list = load();
+    let s = list
+        .iter_mut()
+        .find(|s| s.user_id == user_id)
+        .ok_or("That account isn't saved anymore.")?;
+    s.auto_rejoin = on;
+    save(&list)
+}
+
+pub fn auto_rejoin_of(user_id: u64) -> bool {
+    load().iter().any(|s| s.user_id == user_id && s.auto_rejoin)
+}
+
+pub fn display_names() -> std::collections::HashMap<u64, String> {
+    load()
+        .into_iter()
+        .map(|s| (s.user_id, s.display_name))
+        .collect()
 }
 
 pub fn profile_of(user_id: u64) -> Option<String> {

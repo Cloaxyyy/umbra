@@ -17,10 +17,13 @@ mod paths;
 mod personal;
 mod players;
 mod profiles;
+mod recovery;
 mod roblox;
 mod settings;
+mod stats;
 mod theme;
 mod trades;
+mod winctl;
 
 use serde::Serialize;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -177,6 +180,7 @@ async fn launch_account(
     let profile_id = profile_id
         .or(for_game)
         .or_else(|| accounts::profile_of(user_id));
+    recovery::remember(user_id, &target);
     start_client(&app, &running, &uri, Some(user_id), label, profile_id).await
 }
 
@@ -432,14 +436,112 @@ fn discord_status(state: State<'_, DiscordState>) -> Option<String> {
 
 struct DiscordState(std::sync::Mutex<(discord::Discord, Option<String>)>);
 
+fn unix_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}
+
+async fn auto_rejoin(
+    app: AppHandle,
+    user_id: u64,
+    session: Option<logwatch::Session>,
+    reason: String,
+) {
+    let s = session.clone().unwrap_or(logwatch::Session {
+        user_id,
+        ..Default::default()
+    });
+    let Some(attempt) = recovery::allow(user_id, unix_now()) else {
+        let _ = app.emit("auto-rejoin", recovery::record(&s, &reason, "paused"));
+        return;
+    };
+    let Some(target) = recovery::target_for(user_id, session.as_ref(), attempt) else {
+        let _ = app.emit("auto-rejoin", recovery::record(&s, &reason, "unknown"));
+        return;
+    };
+    let _ = app.emit("auto-rejoin", recovery::record(&s, &reason, "rejoining"));
+    tokio::time::sleep(Duration::from_secs(4)).await;
+    let running = app.state::<launch::Running>();
+    let profile = running.pid_of(user_id).and_then(|pid| {
+        let p = running.owner(pid).map(|o| o.1);
+        let _ = running.kill_and_wait(pid);
+        p
+    });
+    app.state::<logwatch::Watcher>().forget(user_id);
+    tokio::time::sleep(Duration::from_millis(1200)).await;
+    if let Err(e) = launch_account(app.clone(), app.state(), user_id, target, profile).await {
+        let _ = app.emit(
+            "auto-rejoin",
+            recovery::record(&s, &format!("{reason}. Rejoin failed: {e}"), "failed"),
+        );
+    }
+}
+
+fn recover(app: &AppHandle, watcher: &logwatch::Watcher) {
+    let running = app.state::<launch::Running>();
+    for e in running.reap() {
+        if let (true, Some(u)) = (e.crashed, e.user_id) {
+            if accounts::auto_rejoin_of(u) {
+                tauri::async_runtime::spawn(auto_rejoin(
+                    app.clone(),
+                    u,
+                    None,
+                    "Roblox crashed".into(),
+                ));
+            }
+        }
+    }
+    let ours = running.alive_users();
+    for (session, reason) in watcher.take_drops() {
+        let code = logwatch::reason_code(&reason);
+        if recovery::user_left(code) || !ours.contains(&session.user_id) {
+            continue;
+        }
+        if accounts::auto_rejoin_of(session.user_id) {
+            tauri::async_runtime::spawn(auto_rejoin(
+                app.clone(),
+                session.user_id,
+                Some(session),
+                reason,
+            ));
+        } else {
+            let _ = app.emit(
+                "client-dropped",
+                recovery::record(&session, &reason, "none"),
+            );
+        }
+    }
+}
+
+fn window_tools(app: &AppHandle, s: &settings::Settings, tick: u64) {
+    let running = app.state::<launch::Running>();
+    if s.label_windows && tick % 5 == 0 {
+        let names = accounts::display_names();
+        for c in running.snapshot() {
+            if let Some(n) = c.user_id.and_then(|u| names.get(&u)) {
+                winctl::label(c.pid, &format!("Roblox \u{b7} {n}"));
+            }
+        }
+    }
+    if s.trim_background && tick % 60 == 0 {
+        running.trim_background();
+    }
+}
+
 fn background_loop(app: AppHandle) {
     let since = SystemTime::now();
+    let mut tick: u64 = 0;
     loop {
         std::thread::sleep(Duration::from_secs(2));
+        tick += 1;
         let s = settings::load();
         let watcher = app.state::<logwatch::Watcher>();
         watcher.scan(since);
         tauri::async_runtime::block_on(watcher.enrich(s.server_location));
+        recover(&app, &watcher);
+        window_tools(&app, &s, tick);
 
         let state = app.state::<DiscordState>();
         let mut guard = state.0.lock().unwrap();
@@ -476,6 +578,50 @@ fn show_main(app: &AppHandle) {
 #[tauri::command]
 fn set_account_profile(user_id: u64, profile_id: Option<String>) -> Result<(), String> {
     accounts::set_profile(user_id, profile_id)
+}
+
+#[tauri::command]
+fn set_account_rejoin(user_id: u64, on: bool) -> Result<(), String> {
+    accounts::set_auto_rejoin(user_id, on)
+}
+
+#[tauri::command]
+fn recent_disconnects() -> Vec<recovery::Disconnect> {
+    recovery::recent()
+}
+
+#[tauri::command]
+fn trim_client(running: State<'_, launch::Running>, pid: u32) -> Result<u64, String> {
+    running.trim(pid)
+}
+
+#[tauri::command]
+fn arrange_windows(running: State<'_, launch::Running>) -> usize {
+    let pids: Vec<u32> = running.snapshot().iter().map(|c| c.pid).collect();
+    winctl::arrange(&pids)
+}
+
+#[tauri::command]
+async fn games_updated(
+    universe_ids: Vec<u64>,
+) -> Result<std::collections::HashMap<u64, String>, String> {
+    extras::games_updated(&universe_ids).await
+}
+
+#[tauri::command]
+async fn get_stats(user_id: Option<u64>, tz_offset_min: i32) -> Result<stats::Stats, String> {
+    let visits = tokio::task::spawn_blocking(personal::history)
+        .await
+        .map_err(|e| e.to_string())?;
+    let mut s = stats::compute(&visits, user_id, unix_now(), tz_offset_min as i64 * 60);
+    let ids: Vec<u64> = s.games.iter().map(|g| g.universe_id).collect();
+    let cards = personal::infos(&ids)
+        .await
+        .into_iter()
+        .map(|(k, v)| (k, v.card))
+        .collect();
+    stats::name_games(&mut s, &cards);
+    Ok(s)
 }
 
 #[tauri::command]
@@ -909,6 +1055,12 @@ pub fn run() {
             set_default_profile,
             set_game_profile,
             bridge_answer,
+            set_account_rejoin,
+            recent_disconnects,
+            trim_client,
+            arrange_windows,
+            games_updated,
+            get_stats,
             bridge_grants,
             bridge_revoke,
             get_badges,

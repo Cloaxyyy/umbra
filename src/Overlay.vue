@@ -146,6 +146,30 @@ function MoveTo(f: Friend) {
     return Run('to', async () => (pid.value = await api.moveClient(p, 'to', f.placeId, f.gameId)), `Moving to ${f.displayName}'s server.`)
 }
 
+async function Trim() {
+    const p = pid.value
+    if (!p || busy.value) return
+    busy.value = 'trim'
+    try {
+        const mb = await api.trimClient(p)
+        Say('good', mb > 0 ? `Freed ${mb} MB.` : 'This client was already lean.')
+    } catch (e) {
+        Say('bad', String(e))
+    }
+    busy.value = ''
+    Refresh()
+}
+async function FlipRejoin() {
+    const a = account.value
+    if (!a) return
+    try {
+        await api.setAccountRejoin(a.userId, !a.autoRejoin)
+        a.autoRejoin = !a.autoRejoin
+        Say('good', a.autoRejoin ? 'This account rejoins by itself after kicks and crashes.' : 'Auto-rejoin is off.')
+    } catch (e) {
+        Say('bad', String(e))
+    }
+}
 function SetPriority(level: Instance['priority']) {
     const p = pid.value
     if (!p) return
@@ -432,6 +456,26 @@ onUnmounted(() => {
                                 {{ p.label }}
                             </button>
                         </div>
+                        <div class="row between">
+                            <span class="faint small">Using {{ client.memoryMb }} MB of memory</span>
+                            <button class="btn btn-sm" :disabled="!!busy" @click="Trim">Free memory</button>
+                        </div>
+                    </div>
+
+                    <div v-if="account" class="block">
+                        <div class="row between">
+                            <h3>Auto-rejoin</h3>
+                            <button
+                                class="switch"
+                                role="switch"
+                                :aria-checked="account.autoRejoin"
+                                aria-label="Auto-rejoin for this account"
+                                @click="FlipRejoin"
+                            ></button>
+                        </div>
+                        <p class="faint small">
+                            Rejoins by itself after kicks, disconnects and crashes. Stops after 5 tries in 15 minutes.
+                        </p>
                     </div>
 
                     <div class="block">

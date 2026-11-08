@@ -37,7 +37,10 @@ struct Entry {
 }
 
 #[derive(Default)]
-pub struct Running(Mutex<Vec<Entry>>);
+pub struct Running {
+    entries: Mutex<Vec<Entry>>,
+    exited: Mutex<Vec<Exited>>,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,10 +51,11 @@ pub struct Instance {
     pub profile_id: String,
     pub secs: u64,
     pub priority: String,
+    pub memory_mb: u64,
     pub game: Option<super::logwatch::Session>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Exited {
     pub pid: u32,
@@ -72,8 +76,24 @@ impl Entry {
             profile_id: self.profile_id.clone(),
             secs: self.started.elapsed().as_secs(),
             priority: self.priority.clone(),
+            memory_mb: memory_mb(&self.child),
             game: None,
         }
+    }
+}
+
+fn memory_mb(child: &Child) -> u64 {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::System::ProcessStatus::{
+        K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+    let mut c: PROCESS_MEMORY_COUNTERS = unsafe { std::mem::zeroed() };
+    c.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+    let ok = unsafe { K32GetProcessMemoryInfo(child.as_raw_handle() as _, &mut c, c.cb) };
+    if ok == 0 {
+        0
+    } else {
+        (c.WorkingSetSize / (1024 * 1024)) as u64
     }
 }
 
@@ -86,7 +106,7 @@ impl Running {
         profile_id: String,
     ) -> u32 {
         let pid = child.id();
-        self.0.lock().unwrap().push(Entry {
+        self.entries.lock().unwrap().push(Entry {
             child,
             user_id,
             label,
@@ -99,7 +119,7 @@ impl Running {
     }
 
     pub fn owner(&self, pid: u32) -> Option<(Option<u64>, String)> {
-        self.0
+        self.entries
             .lock()
             .unwrap()
             .iter()
@@ -119,7 +139,7 @@ impl Running {
             "idle" => IDLE_PRIORITY_CLASS,
             _ => return Err("Priority must be normal, low or idle.".into()),
         };
-        let mut v = self.0.lock().unwrap();
+        let mut v = self.entries.lock().unwrap();
         let e = v
             .iter_mut()
             .find(|e| e.child.id() == pid)
@@ -133,7 +153,7 @@ impl Running {
     }
 
     pub fn kill_and_wait(&self, pid: u32) -> Result<(), String> {
-        let mut v = self.0.lock().unwrap();
+        let mut v = self.entries.lock().unwrap();
         let e = v
             .iter_mut()
             .find(|e| e.child.id() == pid)
@@ -145,7 +165,13 @@ impl Running {
     }
 
     pub fn poll(&self) -> (Vec<Instance>, Vec<Exited>) {
-        let mut v = self.0.lock().unwrap();
+        self.reap();
+        let exited = std::mem::take(&mut *self.exited.lock().unwrap());
+        (self.snapshot(), exited)
+    }
+
+    pub fn reap(&self) -> Vec<Exited> {
+        let mut v = self.entries.lock().unwrap();
         let mut exited = vec![];
         v.retain_mut(|e| match e.child.try_wait() {
             Ok(None) => true,
@@ -165,19 +191,55 @@ impl Running {
                 false
             }
         });
-        let alive = v.iter().map(Entry::instance).collect();
-        (alive, exited)
+        self.exited.lock().unwrap().extend(exited.iter().cloned());
+        exited
+    }
+
+    pub fn pid_of(&self, user_id: u64) -> Option<u32> {
+        self.entries.lock().unwrap().iter_mut().find_map(|e| {
+            (e.user_id == Some(user_id) && matches!(e.child.try_wait(), Ok(None)))
+                .then(|| e.child.id())
+        })
+    }
+
+    pub fn trim(&self, pid: u32) -> Result<u64, String> {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::System::ProcessStatus::K32EmptyWorkingSet;
+        let v = self.entries.lock().unwrap();
+        let e = v
+            .iter()
+            .find(|e| e.child.id() == pid)
+            .ok_or("That client already closed.")?;
+        let before = memory_mb(&e.child);
+        if unsafe { K32EmptyWorkingSet(e.child.as_raw_handle() as _) } == 0 {
+            return Err("Windows didn't allow trimming that client's memory.".into());
+        }
+        Ok(before.saturating_sub(memory_mb(&e.child)))
+    }
+
+    pub fn trim_background(&self) {
+        let pids: Vec<u32> = self
+            .entries
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|e| e.priority != "normal")
+            .map(|e| e.child.id())
+            .collect();
+        for pid in pids {
+            let _ = self.trim(pid);
+        }
     }
 
     pub fn snapshot(&self) -> Vec<Instance> {
-        let mut v = self.0.lock().unwrap();
+        let mut v = self.entries.lock().unwrap();
         v.iter_mut()
             .filter_map(|e| matches!(e.child.try_wait(), Ok(None)).then(|| e.instance()))
             .collect()
     }
 
     pub fn kill(&self, pid: u32) -> Result<(), String> {
-        let mut v = self.0.lock().unwrap();
+        let mut v = self.entries.lock().unwrap();
         let e = v
             .iter_mut()
             .find(|e| e.child.id() == pid)
@@ -187,7 +249,7 @@ impl Running {
     }
 
     pub fn alive_users(&self) -> Vec<u64> {
-        self.0
+        self.entries
             .lock()
             .unwrap()
             .iter_mut()
@@ -202,7 +264,7 @@ impl Running {
     }
 
     pub fn any_for_profile(&self, profile_id: &str) -> bool {
-        self.0
+        self.entries
             .lock()
             .unwrap()
             .iter_mut()

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { api, type Account, type Preset, type Presence, type Target } from '../api'
+import { api, type Account, type Disconnect, type Preset, type Presence, type Target } from '../api'
 import Icon from '../components/Icon.vue'
+import { Ago } from '../format'
 import { ActiveAccount, AddAccount, LaunchMany, ProfileName, RefreshAccounts, RefreshRunning, store, Toast } from '../store'
 
 async function SetInstance(a: Account, value: string) {
@@ -144,6 +145,61 @@ async function RunPreset(p: Preset) {
     launchingPreset.value = null
 }
 
+async function FlipRejoin(a: Account) {
+    try {
+        await api.setAccountRejoin(a.userId, !a.autoRejoin)
+        a.autoRejoin = !a.autoRejoin
+        Toast(
+            'good',
+            a.autoRejoin ? `${a.displayName} rejoins by itself after kicks and crashes.` : `Auto-rejoin is off for ${a.displayName}.`,
+        )
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+
+const drops = ref<Disconnect[]>([])
+async function LoadDrops() {
+    try {
+        drops.value = await api.recentDisconnects()
+    } catch {}
+}
+const DROP_ACTIONS: Record<Disconnect['action'], string> = {
+    none: 'Not rejoined',
+    rejoining: 'Rejoined',
+    paused: 'Paused after 5 tries',
+    failed: 'Rejoin failed',
+    unknown: 'No game to rejoin',
+}
+
+async function Trim(pid: number) {
+    try {
+        const freed = await api.trimClient(pid)
+        Toast('good', freed > 0 ? `Freed ${freed} MB.` : 'That client was already lean.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+    RefreshRunning()
+}
+async function Arrange() {
+    try {
+        const n = await api.arrangeWindows()
+        Toast(n ? 'good' : 'bad', n ? `Arranged ${n} Roblox window${n === 1 ? '' : 's'}.` : 'No Roblox windows to arrange.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+
+async function SetSchedule(p: Preset, at: string) {
+    try {
+        await api.savePreset({ ...p, at: at || null })
+        Toast('good', at ? `${p.name} starts every day at ${at} while Umbra is open.` : `${p.name} is no longer scheduled.`)
+        LoadPresets()
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+
 function TargetLabel(t: Target) {
     if (t.kind === 'app') return 'Roblox app'
     if (t.kind === 'follow') return `Follow ${t.username}`
@@ -180,7 +236,11 @@ onMounted(async () => {
     await RefreshAccounts()
     LoadPresence()
     LoadPresets()
-    timer = window.setInterval(LoadPresence, 20_000)
+    LoadDrops()
+    timer = window.setInterval(() => {
+        LoadPresence()
+        LoadDrops()
+    }, 20_000)
 })
 onUnmounted(() => clearInterval(timer))
 </script>
@@ -239,6 +299,17 @@ onUnmounted(() => clearInterval(timer))
                         </option>
                         <option v-for="p in store.profiles?.profiles ?? []" :key="p.id" :value="p.id">{{ p.name }}</option>
                     </select>
+                </label>
+                <label class="inst-pick">
+                    <span class="eyebrow">Auto-rejoin</span>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="a.autoRejoin"
+                        :aria-label="'Auto-rejoin for ' + a.displayName"
+                        title="Rejoin by itself after kicks, disconnects and crashes"
+                        @click="FlipRejoin(a)"
+                    ></button>
                 </label>
                 <div class="row" style="gap: 6px; flex-wrap: wrap">
                     <button class="btn btn-join btn-sm" @click="OpenApp(a)"><Icon name="play" :size="12" />Open Roblox</button>
@@ -333,6 +404,15 @@ onUnmounted(() => clearInterval(timer))
                     </p>
                 </div>
                 <div class="row" style="gap: 8px">
+                    <input
+                        :id="'preset-at-' + p.id"
+                        type="time"
+                        class="input time"
+                        :value="p.at ?? ''"
+                        :aria-label="'Daily start time for ' + p.name"
+                        title="Start this preset every day at this time while Umbra is open"
+                        @change="SetSchedule(p, ($event.target as HTMLInputElement).value)"
+                    />
                     <template v-if="confirmPreset === p.id">
                         <span class="confirm">
                             <button class="btn btn-danger btn-sm" @click="confirmPreset = null">Cancel</button>
@@ -348,7 +428,12 @@ onUnmounted(() => clearInterval(timer))
         </section>
 
         <section class="card stack" style="gap: 6px">
-            <h2>Running now</h2>
+            <div class="row between">
+                <h2>Running now</h2>
+                <button v-if="store.running.length > 1" class="btn btn-sm" @click="Arrange">
+                    <Icon name="layers" :size="12" />Arrange windows
+                </button>
+            </div>
             <p v-if="!store.running.length" class="muted">No Roblox clients started from Umbra are running.</p>
             <div v-for="r in store.running" :key="r.pid" class="run row between">
                 <div class="row" style="gap: 10px; min-width: 0">
@@ -362,7 +447,7 @@ onUnmounted(() => clearInterval(timer))
                     </template>
                     <span v-else class="faint">{{ r.label }}</span>
                     <span class="faint">· {{ ProfileName(r.profileId) ?? 'Instance' }}</span>
-                    <span class="faint mono">PID {{ r.pid }}</span>
+                    <span class="faint mono">{{ r.memoryMb }} MB</span>
                 </div>
                 <div class="row" style="gap: 6px">
                     <template v-if="r.game && r.userId">
@@ -383,8 +468,27 @@ onUnmounted(() => clearInterval(timer))
                             <Icon name="swap" :size="12" />Hop
                         </button>
                     </template>
+                    <button class="btn btn-sm" title="Free memory this client isn't using" @click="Trim(r.pid)">Free memory</button>
                     <button class="btn btn-ghost btn-sm" @click="Close(r.pid)">Close</button>
                 </div>
+            </div>
+        </section>
+
+        <section v-if="drops.length" class="card stack" style="gap: 6px">
+            <h2>Recent disconnects</h2>
+            <p class="muted">Why your clients left their games, newest first.</p>
+            <div v-for="d in drops.slice(0, 10)" :key="d.at + '-' + d.userId" class="run row between" style="gap: 12px">
+                <div style="min-width: 0">
+                    <b>{{ byId[d.userId]?.displayName ?? 'Account' }}</b>
+                    <span class="faint"> · {{ d.gameName ?? 'a game' }} · {{ Ago(d.at) }}</span>
+                    <p class="small reason">{{ d.reason }}</p>
+                </div>
+                <span
+                    class="pill"
+                    :class="{ 'pill-good': d.action === 'rejoining', 'pill-bad': d.action === 'failed' || d.action === 'paused' }"
+                >
+                    {{ DROP_ACTIONS[d.action] }}
+                </span>
             </div>
         </section>
     </div>
@@ -504,6 +608,17 @@ onUnmounted(() => clearInterval(timer))
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+}
+.time {
+    width: 112px;
+    height: 30px;
+    font-size: 12px;
+}
+.reason {
+    color: var(--fg-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .inst-pick .select {
     height: 30px;

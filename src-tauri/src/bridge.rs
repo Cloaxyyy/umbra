@@ -213,6 +213,11 @@ fn handle(app: AppHandle, mut req: Request) {
         return;
     }
     let path = req.url().split('?').next().unwrap_or_default().to_string();
+    let query = req
+        .url()
+        .split_once('?')
+        .map(|(_, q)| q.to_string())
+        .unwrap_or_default();
     let method = req.method().clone();
     let token =
         header(&req, "Authorization").and_then(|v| v.strip_prefix("Bearer ").map(str::to_string));
@@ -261,6 +266,7 @@ fn handle(app: AppHandle, mut req: Request) {
     }
     let (status, out) = match (method, path.as_str()) {
         (Method::Get, "/v1/state") => (200, state(&app)),
+        (Method::Get, "/v1/playtime") => playtime(&query),
         (Method::Post, "/v1/launch") => launch_many(&app, &body),
         (Method::Post, "/v1/favorite") => favorite(&app, &body),
         (Method::Post, "/v1/client") => client(&app, &body),
@@ -324,6 +330,25 @@ fn pair(app: &AppHandle, origin: &str, body: &Value) -> (u16, Value) {
         Ok(()) => (200, json!({ "token": token })),
         Err(e) => (500, fail(&e)),
     }
+}
+
+fn query_u64(query: &str, key: &str) -> Option<u64> {
+    query
+        .split('&')
+        .filter_map(|kv| kv.split_once('='))
+        .find(|(k, _)| *k == key)
+        .and_then(|(_, v)| v.parse().ok())
+}
+
+fn playtime(query: &str) -> (u16, Value) {
+    let Some(id) = query_u64(query, "universeId") else {
+        return (400, fail("Missing the game."));
+    };
+    let (secs, sessions, last) = super::stats::playtime(&super::personal::history(), id);
+    (
+        200,
+        json!({ "secs": secs, "sessions": sessions, "last": last }),
+    )
 }
 
 fn state(app: &AppHandle) -> Value {
@@ -437,5 +462,11 @@ mod tests {
         assert_eq!(a.len(), 64);
         assert_ne!(a, b);
         assert_eq!(hash("abc"), "900150983cd24fb0d6963f7d28e17f72");
+        assert_eq!(
+            query_u64("universeId=383310974&x=1", "universeId"),
+            Some(383310974)
+        );
+        assert_eq!(query_u64("universeId=abc", "universeId"), None);
+        assert_eq!(query_u64("", "universeId"), None);
     }
 }

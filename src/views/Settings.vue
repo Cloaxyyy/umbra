@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { api, type BridgeGrant, type Settings, type Status } from '../api'
 import { Ago, Mb } from '../format'
-import { StartFriendAlerts, Toast } from '../store'
+import { StartFriendAlerts, StartUpdateAlerts, Toast } from '../store'
 import { ACCENTS, ApplyAccent } from '../theme'
 import { CheckForUpdate, InstallUpdate, updates } from '../updater'
 
@@ -89,10 +89,14 @@ type Toggle =
     | 'overlayRecent'
     | 'overlayServerIp'
     | 'extensionBridge'
+    | 'labelWindows'
+    | 'trimBackground'
+    | 'updateAlerts'
 function Flip(key: Toggle) {
     s.value![key] = !s.value![key]
     Save()
     if (key === 'friendAlerts') StartFriendAlerts(s.value!.friendAlerts)
+    if (key === 'updateAlerts') StartUpdateAlerts(s.value!.updateAlerts)
 }
 async function ToggleAutostart() {
     try {
@@ -394,6 +398,45 @@ onUnmounted(() => clearInterval(timer))
 
             <section class="card stack" style="gap: 18px">
                 <h2 class="group">While you play</h2>
+                <div class="setting">
+                    <div>
+                        <h3>Game update alerts</h3>
+                        <p class="muted">Tells you when one of your favorite games updates, with a button to jump in.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.updateAlerts"
+                        aria-label="Game update alerts"
+                        @click="Flip('updateAlerts')"
+                    ></button>
+                </div>
+                <div class="setting">
+                    <div>
+                        <h3>Name Roblox windows after accounts</h3>
+                        <p class="muted">Each Roblox window's title shows which account it is, so alts are easy to tell apart.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.labelWindows"
+                        aria-label="Name Roblox windows after accounts"
+                        @click="Flip('labelWindows')"
+                    ></button>
+                </div>
+                <div class="setting">
+                    <div>
+                        <h3>Free memory from background clients</h3>
+                        <p class="muted">Every two minutes, trims memory from clients set to Low or Idle priority.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.trimBackground"
+                        aria-label="Free memory from background clients"
+                        @click="Flip('trimBackground')"
+                    ></button>
+                </div>
                 <div class="setting">
                     <div>
                         <h3>Friend alerts</h3>

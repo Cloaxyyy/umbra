@@ -2,7 +2,8 @@ import { reactive, watch } from 'vue'
 import { api, type Account, type Chart, type Favorite, type Friend, type Instance, type ProfileStore, type Target } from './api'
 import { Sleep } from './format'
 
-export type View = 'home' | 'discover' | 'game' | 'friends' | 'catalog' | 'avatar' | 'trades' | 'accounts' | 'instances' | 'settings'
+export type View =
+    'home' | 'discover' | 'game' | 'friends' | 'catalog' | 'avatar' | 'trades' | 'accounts' | 'instances' | 'stats' | 'settings'
 export interface Route {
     view: View
     universeId?: number
@@ -194,6 +195,85 @@ async function PollFriends() {
     } else if (fresh.length > 1) {
         Toast('good', `${fresh.length} friends started playing.`, { label: 'See friends', run: () => Go({ view: 'friends' }) })
     }
+}
+
+const UPDATE_POLL_MS = 5 * 60_000
+const UPDATES_KEY = 'umbra.gameUpdates'
+let updateTimer = 0
+
+function ReadSeen(): Record<string, string> {
+    try {
+        return JSON.parse(localStorage.getItem(UPDATES_KEY) ?? '{}') ?? {}
+    } catch {
+        return {}
+    }
+}
+
+async function PollUpdates() {
+    const favs = store.favorites
+    if (!favs.length) return
+    let now: Record<string, string>
+    try {
+        now = await api.gamesUpdated(favs.map((f) => f.universeId))
+    } catch {
+        return
+    }
+    const seen = ReadSeen()
+    const fresh = favs.filter((f) => seen[f.universeId] && now[f.universeId] && now[f.universeId] !== seen[f.universeId])
+    try {
+        localStorage.setItem(UPDATES_KEY, JSON.stringify({ ...seen, ...now }))
+    } catch {}
+    if (fresh.length === 1) {
+        const f = fresh[0]
+        Toast('good', `${f.name} just updated.`, { label: 'Play', run: () => QuickPlay(f.rootPlaceId) })
+    } else if (fresh.length > 1) {
+        Toast('good', `${fresh.length} of your favorites just updated.`, { label: 'See them', run: () => Go({ view: 'home' }) })
+    }
+}
+
+export function StartUpdateAlerts(on: boolean) {
+    clearInterval(updateTimer)
+    if (!on) return
+    PollUpdates()
+    updateTimer = window.setInterval(PollUpdates, UPDATE_POLL_MS)
+}
+
+const RUNS_KEY = 'umbra.presetRuns'
+let scheduleTimer = 0
+
+function Today() {
+    const d = new Date()
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+async function CheckSchedule() {
+    const d = new Date()
+    const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    let presets: Awaited<ReturnType<typeof api.presets>>
+    try {
+        presets = await api.presets()
+    } catch {
+        return
+    }
+    let runs: Record<string, string> = {}
+    try {
+        runs = JSON.parse(localStorage.getItem(RUNS_KEY) ?? '{}') ?? {}
+    } catch {}
+    for (const p of presets) {
+        if (p.at !== hhmm || runs[p.id] === Today()) continue
+        runs[p.id] = Today()
+        try {
+            localStorage.setItem(RUNS_KEY, JSON.stringify(runs))
+        } catch {}
+        Toast('good', `Starting ${p.name} on schedule.`)
+        LaunchMany(p.accountIds, p.target, p.profileId ?? undefined)
+    }
+}
+
+export function StartScheduler() {
+    clearInterval(scheduleTimer)
+    CheckSchedule()
+    scheduleTimer = window.setInterval(CheckSchedule, 20_000)
 }
 
 export async function RefreshFavorites() {

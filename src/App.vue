@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { api, type BridgeRequest } from './api'
+import { api, type BridgeRequest, type Disconnect } from './api'
 import CommandPalette from './components/CommandPalette.vue'
 import Icon from './components/Icon.vue'
 import TitleBar from './components/TitleBar.vue'
@@ -16,6 +16,8 @@ import {
     RefreshRunning,
     RunToastAction,
     StartFriendAlerts,
+    StartScheduler,
+    StartUpdateAlerts,
     store,
     Toast,
     type View,
@@ -32,6 +34,7 @@ import Game from './views/Game.vue'
 import Home from './views/Home.vue'
 import Instances from './views/Instances.vue'
 import Settings from './views/Settings.vue'
+import Stats from './views/Stats.vue'
 
 const NAV: { id: View; label: string; icon: IconName }[] = [
     { id: 'home', label: 'Launchpad', icon: 'rocket' },
@@ -42,6 +45,7 @@ const NAV: { id: View; label: string; icon: IconName }[] = [
     { id: 'trades', label: 'Trades', icon: 'swap' },
     { id: 'accounts', label: 'Accounts', icon: 'idcard' },
     { id: 'instances', label: 'Instances', icon: 'layers' },
+    { id: 'stats', label: 'Stats', icon: 'activity' },
 ]
 const IsActive = (id: View) => store.route.view === id || (id === 'discover' && store.route.view === 'game')
 
@@ -62,6 +66,23 @@ let timer = 0
 let unlisten: (() => void) | undefined
 let unPair: (() => void) | undefined
 let unFav: (() => void) | undefined
+let unRejoin: (() => void) | undefined
+let unDropped: (() => void) | undefined
+const AccountName = (id: number) => store.accounts.find((a) => a.userId === id)?.displayName ?? 'An account'
+function OnRejoin(d: Disconnect) {
+    const who = AccountName(d.userId)
+    if (d.action === 'rejoining') Toast('good', `${who} was disconnected (${d.reason}). Rejoining…`)
+    else if (d.action === 'paused') Toast('bad', `Auto-rejoin paused for ${who} after too many tries. Last reason: ${d.reason}`)
+    else Toast('bad', `${who}: ${d.reason}`)
+}
+function OnDropped(d: Disconnect) {
+    const pid = store.running.find((r) => r.userId === d.userId)?.pid
+    Toast(
+        'bad',
+        `${AccountName(d.userId)} was disconnected from ${d.gameName ?? 'a game'}: ${d.reason}`,
+        pid ? { label: 'Rejoin', run: () => api.moveClient(pid, 'to', d.placeId).catch((e) => Toast('bad', String(e))) } : undefined,
+    )
+}
 const pairing = ref<BridgeRequest | null>(null)
 async function AnswerPair(allow: boolean) {
     const r = pairing.value
@@ -81,6 +102,9 @@ onMounted(async () => {
     unlisten = await api.onLaunchError((m) => Toast('bad', m))
     unPair = await api.onBridgePair((r) => (pairing.value = r))
     unFav = await api.onFavoritesChanged(() => RefreshFavorites())
+    unRejoin = await api.onAutoRejoin(OnRejoin)
+    unDropped = await api.onClientDropped(OnDropped)
+    StartScheduler()
     RefreshAccounts().catch((e) => Toast('bad', String(e)))
     RefreshProfiles()
     RefreshRunning()
@@ -91,6 +115,7 @@ onMounted(async () => {
         .then((s) => {
             ApplyAccent(s.accent)
             StartFriendAlerts(s.friendAlerts)
+            setTimeout(() => StartUpdateAlerts(s.updateAlerts), 8000)
             if (s.autoCheckUpdates) setTimeout(() => CheckForUpdate(false), 5000)
         })
         .catch(() => {})
@@ -103,6 +128,9 @@ onUnmounted(() => {
     unlisten?.()
     unPair?.()
     unFav?.()
+    unRejoin?.()
+    unDropped?.()
+    StartUpdateAlerts(false)
 })
 </script>
 
@@ -151,6 +179,7 @@ onUnmounted(() => {
                     <Trades v-else-if="store.route.view === 'trades'" />
                     <Accounts v-else-if="store.route.view === 'accounts'" />
                     <Instances v-else-if="store.route.view === 'instances'" />
+                    <Stats v-else-if="store.route.view === 'stats'" />
                     <Settings v-else />
                 </Transition>
             </main>

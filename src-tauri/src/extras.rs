@@ -152,6 +152,40 @@ pub struct Preset {
     pub target: Target,
     #[serde(default)]
     pub profile_id: Option<String>,
+    #[serde(default)]
+    pub at: Option<String>,
+}
+
+pub fn valid_time(t: &str) -> bool {
+    let Some((h, m)) = t.split_once(':') else {
+        return false;
+    };
+    h.len() == 2
+        && m.len() == 2
+        && h.parse::<u8>().is_ok_and(|h| h < 24)
+        && m.parse::<u8>().is_ok_and(|m| m < 60)
+}
+
+pub async fn games_updated(ids: &[u64]) -> Result<std::collections::HashMap<u64, String>, String> {
+    let mut out = std::collections::HashMap::new();
+    for chunk in ids.chunks(50) {
+        let list = chunk
+            .iter()
+            .map(u64::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        let v = get_json(
+            &format!("https://games.roblox.com/v1/games?universeIds={list}"),
+            None,
+        )
+        .await?;
+        for g in v["data"].as_array().into_iter().flatten() {
+            if let (Some(id), Some(u)) = (g["id"].as_u64(), g["updated"].as_str()) {
+                out.insert(id, u.to_string());
+            }
+        }
+    }
+    Ok(out)
 }
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -184,6 +218,10 @@ pub fn save_preset(mut p: Preset) -> Result<Preset, String> {
     }
     if p.account_ids.is_empty() {
         return Err("Pick at least one account for the preset.".into());
+    }
+    p.at = p.at.map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
+    if p.at.as_deref().is_some_and(|t| !valid_time(t)) {
+        return Err("Use a 24 hour time like 18:30 for the schedule.".into());
     }
     p.name = name.to_string();
     let _g = LOCK.lock().unwrap();
@@ -240,6 +278,16 @@ mod tests {
     }
 
     #[test]
+    fn schedule_times_must_be_24_hour() {
+        assert!(valid_time("00:00"));
+        assert!(valid_time("23:59"));
+        assert!(!valid_time("24:00"));
+        assert!(!valid_time("7:30"));
+        assert!(!valid_time("12:60"));
+        assert!(!valid_time("noon"));
+    }
+
+    #[test]
     fn preset_round_trips_with_target() {
         let p = Preset {
             id: "preset-1".into(),
@@ -250,6 +298,7 @@ mod tests {
                 job_id: None,
             },
             profile_id: Some("potato".into()),
+            at: Some("18:30".into()),
         };
         let json = serde_json::to_string(&p).unwrap();
         assert!(json.contains("\"kind\":\"place\""));

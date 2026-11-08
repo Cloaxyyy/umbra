@@ -24,6 +24,7 @@ const PAGES: { label: string; icon: IconName; to: Route; words: string }[] = [
     { label: 'Trades', icon: 'swap', to: { view: 'trades' }, words: 'limiteds values rolimons' },
     { label: 'Accounts', icon: 'idcard', to: { view: 'accounts' }, words: 'alts login' },
     { label: 'Instances', icon: 'layers', to: { view: 'instances' }, words: 'mods flags fps profiles' },
+    { label: 'Stats', icon: 'activity', to: { view: 'stats' }, words: 'playtime hours most played streak' },
     { label: 'Settings', icon: 'settings', to: { view: 'settings' }, words: 'updates discord tray theme' },
 ]
 

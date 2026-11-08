@@ -74,7 +74,7 @@ pub fn visits_in(text: &str) -> Vec<Visit> {
                     secs: 0,
                 });
             }
-            Some(Event::Left) => {
+            Some(Event::Left { .. }) => {
                 if let Some(mut v) = open.take() {
                     v.secs = ts.saturating_sub(v.start);
                     out.push(v);
@@ -151,13 +151,13 @@ pub struct ForYou {
     pub based_on: usize,
 }
 
-struct Info {
-    card: GameCard,
+pub(crate) struct Info {
+    pub(crate) card: GameCard,
     l1: String,
     l2: String,
 }
 
-async fn infos(ids: &[u64]) -> HashMap<u64, Info> {
+pub(crate) async fn infos(ids: &[u64]) -> HashMap<u64, Info> {
     let mut out = HashMap::new();
     for chunk in ids.chunks(50) {
         let list = chunk

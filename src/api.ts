@@ -25,6 +25,9 @@ export interface Settings {
     overlayRecent: boolean
     overlayServerIp: boolean
     extensionBridge: boolean
+    labelWindows: boolean
+    trimBackground: boolean
+    updateAlerts: boolean
 }
 
 export interface GameSession {
@@ -51,6 +54,7 @@ export interface Account {
     displayName: string
     avatar: string | null
     profileId: string | null
+    autoRejoin: boolean
 }
 
 export interface Presence {
@@ -67,6 +71,7 @@ export interface Instance {
     profileId: string
     secs: number
     priority: 'normal' | 'low' | 'idle'
+    memoryMb: number
     game: GameSession | null
 }
 export interface Exited {
@@ -142,6 +147,37 @@ export interface Preset {
     accountIds: number[]
     target: Target
     profileId: string | null
+    at?: string | null
+}
+export interface Disconnect {
+    userId: number
+    placeId: number
+    universeId: number
+    gameName: string | null
+    reason: string
+    code: number | null
+    at: number
+    action: 'none' | 'rejoining' | 'paused' | 'failed' | 'unknown'
+}
+export interface GameStat {
+    universeId: number
+    rootPlaceId: number
+    secs: number
+    sessions: number
+    last: number
+    name: string | null
+    icon: string | null
+}
+export interface Stats {
+    totalSecs: number
+    sessions: number
+    daysPlayed: number
+    streak: number
+    longestSecs: number
+    first: number | null
+    week: number[]
+    games: GameStat[]
+    accounts: { userId: number; secs: number; sessions: number }[]
 }
 export interface Mod {
     id: string
@@ -431,6 +467,14 @@ export const api = {
     deletePreset: (id: string) => invoke<void>('delete_preset', { id }),
     flagAllowlist: () => invoke<string[]>('get_flag_allowlist'),
     bridgeAnswer: (id: string, allow: boolean) => invoke<void>('bridge_answer', { id, allow }),
+    setAccountRejoin: (userId: number, on: boolean) => invoke<void>('set_account_rejoin', { userId, on }),
+    recentDisconnects: () => invoke<Disconnect[]>('recent_disconnects'),
+    trimClient: (pid: number) => invoke<number>('trim_client', { pid }),
+    arrangeWindows: () => invoke<number>('arrange_windows'),
+    gamesUpdated: (universeIds: number[]) => invoke<Record<string, string>>('games_updated', { universeIds }),
+    stats: (userId: number | null, tzOffsetMin: number) => invoke<Stats>('get_stats', { userId, tzOffsetMin }),
+    onAutoRejoin: (cb: (d: Disconnect) => void) => listen<Disconnect>('auto-rejoin', (e) => cb(e.payload)),
+    onClientDropped: (cb: (d: Disconnect) => void) => listen<Disconnect>('client-dropped', (e) => cb(e.payload)),
     bridgeGrants: () => invoke<BridgeGrant[]>('bridge_grants'),
     bridgeRevoke: (id: string | null) => invoke<void>('bridge_revoke', { id }),
     onBridgePair: (cb: (r: BridgeRequest) => void) => listen<BridgeRequest>('bridge-pair', (e) => cb(e.payload)),

@@ -65,7 +65,7 @@ unsafe extern "system" fn each(hwnd: HWND, data: LPARAM) -> BOOL {
     1
 }
 
-fn window_of(pid: u32) -> isize {
+pub(crate) fn window_of(pid: u32) -> isize {
     let mut state: (u32, isize, i64) = (pid, 0, 0);
     unsafe { EnumWindows(Some(each), &mut state as *mut _ as LPARAM) };
     state.1

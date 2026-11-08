@@ -18,6 +18,7 @@ const LABELS: Record<string, string> = {
     trades: 'Trades',
     accounts: 'Accounts',
     instances: 'Instances',
+    stats: 'Stats',
     settings: 'Settings',
 }
 const crumbs = computed(() => {

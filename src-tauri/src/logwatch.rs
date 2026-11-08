@@ -22,7 +22,16 @@ pub enum Event {
     Server {
         ip: String,
     },
-    Left,
+    Left {
+        reason: String,
+    },
+}
+
+pub fn reason_code(reason: &str) -> Option<u32> {
+    reason
+        .split(|c: char| !c.is_ascii_digit())
+        .find(|t| t.len() == 3)
+        .and_then(|t| t.parse().ok())
 }
 
 fn field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
@@ -62,8 +71,9 @@ pub fn parse_line(line: &str) -> Option<Event> {
             return Some(Event::Server { ip: ip.to_string() });
         }
     }
-    if line.contains("Disconnected from server for reason") {
-        return Some(Event::Left);
+    if let Some(i) = line.find("Disconnected from server for reason") {
+        let reason = line[i + 35..].trim_start_matches(':').trim().to_string();
+        return Some(Event::Left { reason });
     }
     None
 }
@@ -95,6 +105,7 @@ pub struct Watcher {
     files: Mutex<HashMap<PathBuf, FileState>>,
     games: Mutex<HashMap<u64, (String, Option<String>)>>,
     places: Mutex<HashMap<String, String>>,
+    drops: Mutex<Vec<(Session, String)>>,
 }
 
 pub(crate) fn logs_dir() -> Option<PathBuf> {
@@ -148,7 +159,9 @@ impl Watcher {
             let mut lines: Vec<&str> = text.split('\n').collect();
             st.partial = lines.pop().unwrap_or_default().to_string();
             for line in lines {
-                apply(st, line);
+                if let Some(drop) = apply(st, line) {
+                    self.drops.lock().unwrap().push(drop);
+                }
             }
         }
     }
@@ -166,6 +179,10 @@ impl Watcher {
             }
         }
         out
+    }
+
+    pub fn take_drops(&self) -> Vec<(Session, String)> {
+        std::mem::take(&mut *self.drops.lock().unwrap())
     }
 
     pub fn forget(&self, user_id: u64) {
@@ -239,7 +256,7 @@ impl Watcher {
     }
 }
 
-fn apply(st: &mut FileState, line: &str) {
+fn apply(st: &mut FileState, line: &str) -> Option<(Session, String)> {
     match parse_line(line) {
         Some(Event::Joining { job_id, place_id }) => st.pending_job = Some((job_id, place_id)),
         Some(Event::Joined {
@@ -266,9 +283,10 @@ fn apply(st: &mut FileState, line: &str) {
                 s.server_ip = Some(ip);
             }
         }
-        Some(Event::Left) => st.session = None,
+        Some(Event::Left { reason }) => return st.session.take().map(|s| (s, reason)),
         None => {}
     }
+    None
 }
 
 #[cfg(test)]
@@ -303,7 +321,18 @@ mod tests {
                 ip: "128.116.48.33".into()
             })
         );
-        assert_eq!(parse_line(LEFT), Some(Event::Left));
+        assert_eq!(
+            parse_line(LEFT),
+            Some(Event::Left {
+                reason: "Player: 285 (DisconnectClientInitiated)".into()
+            })
+        );
+        assert_eq!(
+            reason_code("Player: 285 (DisconnectClientInitiated)"),
+            Some(285)
+        );
+        assert_eq!(reason_code("Kicked: 267 idle for 20 minutes"), Some(267));
+        assert_eq!(reason_code("lost connection"), None);
         assert_eq!(
             parse_line("2026-11-07T20:39:31Z [FLog::Network] Join snapshot timer: 0.81"),
             None
@@ -352,7 +381,10 @@ mod tests {
                 Some("128.116.48.33")
             )
         );
-        apply(&mut st, LEFT);
+        let drop = apply(&mut st, LEFT).expect("leaving reports the session");
+        assert_eq!(drop.0.user_id, 1234567890);
+        assert_eq!(drop.1, "Player: 285 (DisconnectClientInitiated)");
         assert!(st.session.is_none());
+        assert!(apply(&mut st, LEFT).is_none());
     }
 }
