@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { api, type Account, type Presence, type Target } from '../api'
+import { api, type Account, type Preset, type Presence, type Target } from '../api'
 import Icon from '../components/Icon.vue'
 import { ActiveAccount, AddAccount, LaunchMany, ProfileName, RefreshAccounts, RefreshRunning, store, Toast } from '../store'
 
@@ -76,17 +76,78 @@ function Toggle(id: number) {
 
 const OpenApp = (a: Account) => LaunchMany([a.userId], { kind: 'app' })
 
+function CurrentTarget(): Target {
+    return mode.value === 'place'
+        ? { kind: 'place', place: place.value.trim(), jobId: jobId.value.trim() || undefined }
+        : { kind: 'follow', username: username.value.trim() }
+}
+const SelectedIds = () => store.accounts.filter((a) => selected.value.has(a.userId)).map((a) => a.userId)
+
 async function Join() {
     joining.value = true
-    const target: Target =
-        mode.value === 'place'
-            ? { kind: 'place', place: place.value.trim(), jobId: jobId.value.trim() || undefined }
-            : { kind: 'follow', username: username.value.trim() }
-    await LaunchMany(
-        store.accounts.filter((a) => selected.value.has(a.userId)).map((a) => a.userId),
-        target,
-    )
+    await LaunchMany(SelectedIds(), CurrentTarget())
     joining.value = false
+}
+
+const presets = ref<Preset[]>([])
+const presetName = ref('')
+const presetProfile = ref('')
+const naming = ref(false)
+const confirmPreset = ref<string | null>(null)
+const launchingPreset = ref<string | null>(null)
+
+async function LoadPresets() {
+    try {
+        presets.value = await api.presets()
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+
+async function SavePreset() {
+    try {
+        const p = await api.savePreset({
+            id: '',
+            name: presetName.value,
+            accountIds: SelectedIds(),
+            target: CurrentTarget(),
+            profileId: presetProfile.value || null,
+        })
+        Toast('good', `Saved ${p.name}.`)
+        naming.value = false
+        presetName.value = ''
+        presetProfile.value = ''
+        LoadPresets()
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+
+async function DeletePreset(id: string) {
+    try {
+        await api.deletePreset(id)
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+    confirmPreset.value = null
+    LoadPresets()
+}
+
+async function RunPreset(p: Preset) {
+    const ids = p.accountIds.filter((id) => byId.value[id])
+    if (!ids.length) {
+        Toast('bad', `None of the accounts in ${p.name} are signed in any more.`)
+        return
+    }
+    launchingPreset.value = p.id
+    await LaunchMany(ids, p.target, p.profileId ?? undefined)
+    launchingPreset.value = null
+}
+
+function TargetLabel(t: Target) {
+    if (t.kind === 'app') return 'Roblox app'
+    if (t.kind === 'follow') return `Follow ${t.username}`
+    return t.jobId ? `${t.place} on a set server` : t.place
 }
 
 const moving = ref<number | null>(null)
@@ -118,6 +179,7 @@ onMounted(async () => {
     } catch {}
     await RefreshAccounts()
     LoadPresence()
+    LoadPresets()
     timer = window.setInterval(LoadPresence, 20_000)
 })
 onUnmounted(() => clearInterval(timer))
@@ -224,11 +286,64 @@ onUnmounted(() => clearInterval(timer))
                     Turn on Multiple instances in Settings to run more than one account.
                 </p>
                 <span v-else class="faint">{{ selected.size }} selected</span>
-                <button class="btn btn-primary" :disabled="!canJoin" @click="Join">
-                    <Icon name="play" :size="14" />{{
-                        joining ? 'Launching…' : `Join with ${selected.size || ''} ${selected.size === 1 ? 'account' : 'accounts'}`
-                    }}
-                </button>
+                <div class="row" style="gap: 8px">
+                    <button class="btn" :disabled="!canJoin" @click="naming = !naming">Save as preset</button>
+                    <button class="btn btn-primary" :disabled="!canJoin" @click="Join">
+                        <Icon name="play" :size="14" />{{
+                            joining ? 'Launching…' : `Join with ${selected.size || ''} ${selected.size === 1 ? 'account' : 'accounts'}`
+                        }}
+                    </button>
+                </div>
+            </div>
+            <div v-if="naming && canJoin" class="fields">
+                <label class="field"
+                    ><span class="eyebrow">Preset name</span>
+                    <input
+                        id="preset-name"
+                        v-model="presetName"
+                        class="input"
+                        maxlength="40"
+                        placeholder="Alt farm"
+                        @keydown.enter="SavePreset"
+                    />
+                </label>
+                <label v-if="store.profiles" class="field"
+                    ><span class="eyebrow">Instance</span>
+                    <select id="preset-profile" v-model="presetProfile" class="select">
+                        <option value="">Each account's own</option>
+                        <option v-for="p in store.profiles.profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
+                </label>
+                <div class="row" style="justify-content: flex-end; align-self: flex-end; gap: 8px">
+                    <button class="btn btn-danger" @click="naming = false">Cancel</button>
+                    <button class="btn" :disabled="!presetName.trim()" @click="SavePreset">Save preset</button>
+                </div>
+            </div>
+        </section>
+
+        <section v-if="presets.length" class="card stack" style="gap: 6px">
+            <h2>Launch presets</h2>
+            <p class="muted">One click sends the same accounts into the same place.</p>
+            <div v-for="p in presets" :key="p.id" class="run row between" style="gap: 12px; flex-wrap: wrap">
+                <div style="min-width: 0">
+                    <p class="name">{{ p.name }}</p>
+                    <p class="faint small">
+                        {{ p.accountIds.map((id) => byId[id]?.displayName ?? 'Signed out').join(', ') }} · {{ TargetLabel(p.target)
+                        }}<template v-if="p.profileId"> · {{ ProfileName(p.profileId) ?? 'Deleted instance' }}</template>
+                    </p>
+                </div>
+                <div class="row" style="gap: 8px">
+                    <template v-if="confirmPreset === p.id">
+                        <span class="confirm">
+                            <button class="btn btn-danger btn-sm" @click="confirmPreset = null">Cancel</button>
+                            <button class="btn btn-sm" @click="DeletePreset(p.id)">Delete</button>
+                        </span>
+                    </template>
+                    <button v-else class="btn btn-ghost btn-sm" @click="confirmPreset = p.id">Delete…</button>
+                    <button class="btn btn-primary btn-sm" :disabled="!!launchingPreset" @click="RunPreset(p)">
+                        <Icon name="play" :size="13" />{{ launchingPreset === p.id ? 'Launching…' : 'Launch' }}
+                    </button>
+                </div>
             </div>
         </section>
 

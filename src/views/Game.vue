@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { computed, onMounted, ref } from 'vue'
-import { api, type GameDetail, type Server } from '../api'
+import { api, type Badge, type GameDetail, type Pass, type Server } from '../api'
 import Icon from '../components/Icon.vue'
 import { Compact, LikePct } from '../format'
-import { ActiveAccount, Go, IsFavorite, LaunchMany, store, Toast, ToggleFavorite } from '../store'
+import { ActiveAccount, Go, IsFavorite, LaunchMany, RefreshProfiles, store, Toast, ToggleFavorite } from '../store'
 
 const props = defineProps<{ universeId: number }>()
 
@@ -67,6 +68,52 @@ async function Join(serverId?: string) {
     launching.value = null
 }
 
+const privateLink = ref('')
+const LINK_RE = /privateServerLinkCode=[A-Za-z0-9_-]+/
+async function JoinPrivate() {
+    if (!game.value) return
+    const m = privateLink.value.match(LINK_RE)
+    if (!m) {
+        Toast('bad', 'Paste a private server link with privateServerLinkCode in it. Open roblox.com/share links in a browser first.')
+        return
+    }
+    if (!pickedIds.value.length) {
+        Toast('bad', 'Pick at least one account to play as.')
+        return
+    }
+    launching.value = 'private'
+    await LaunchMany(pickedIds.value, { kind: 'place', place: `https://www.roblox.com/games/${game.value.rootPlaceId}?${m[0]}` })
+    launching.value = null
+}
+
+const gameInstance = computed(() => (game.value ? (store.profiles?.games?.[String(game.value.rootPlaceId)] ?? '') : ''))
+async function SetInstance(e: Event) {
+    if (!game.value) return
+    const id = (e.target as HTMLSelectElement).value
+    try {
+        await api.setGameProfile(game.value.rootPlaceId, id || null)
+        await RefreshProfiles()
+    } catch (err) {
+        Toast('bad', String(err))
+    }
+}
+
+const passes = ref<Pass[] | null>(null)
+const badges = ref<Badge[] | null>(null)
+const allBadges = ref(false)
+const shownBadges = computed(() => (allBadges.value ? badges.value : badges.value?.slice(0, 8)) ?? [])
+function OpenPass(id: number) {
+    openUrl(`https://www.roblox.com/game-pass/${id}`).catch((e) => Toast('bad', String(e)))
+}
+function LoadExtras(universeId: number) {
+    api.passes(universeId)
+        .then((p) => (passes.value = p))
+        .catch(() => (passes.value = []))
+    api.badges(universeId)
+        .then((b) => (badges.value = b))
+        .catch(() => (badges.value = []))
+}
+
 async function LoadServers(reset: boolean) {
     if (!game.value) return
     loadingServers.value = true
@@ -99,6 +146,7 @@ onMounted(async () => {
         game.value = await api.game(props.universeId)
         if (store.route.universeId === props.universeId) store.route.name = game.value.name
         LoadServers(true)
+        LoadExtras(game.value.universeId)
     } catch (e) {
         error.value = String(e)
     }
@@ -196,11 +244,71 @@ onMounted(async () => {
             <p v-else class="muted small">
                 <button class="link inline" @click="Go({ view: 'accounts' })">Add an account</button> to join games and servers from Umbra.
             </p>
+            <label v-if="store.profiles" class="instance small"
+                ><span class="faint">Instance</span
+                ><select id="game-instance" class="select" :value="gameInstance" aria-label="Instance for this game" @change="SetInstance">
+                    <option value="">Account default</option>
+                    <option v-for="p in store.profiles.profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select></label
+            >
+        </section>
+
+        <section class="card private">
+            <input
+                id="private-link"
+                v-model="privateLink"
+                class="input"
+                placeholder="Paste a private server link"
+                aria-label="Private server link"
+                @keydown.enter="JoinPrivate"
+            />
+            <button class="btn" :disabled="!!launching || !privateLink.trim()" @click="JoinPrivate">
+                <Icon name="play" :size="14" />{{ launching === 'private' ? 'Joining…' : 'Join private server' }}
+            </button>
         </section>
 
         <section v-if="game.description" class="card desc">
             <p :class="{ clamp: !showMore }">{{ game.description }}</p>
             <button class="link" @click="showMore = !showMore">{{ showMore ? 'Show less' : 'Show more' }}</button>
+        </section>
+
+        <section v-if="passes?.length" class="stack" style="gap: 12px">
+            <h2>Game passes</h2>
+            <ul class="passes">
+                <li v-for="p in passes" :key="p.id">
+                    <button class="pass" :title="'Open ' + p.name + ' on Roblox'" @click="OpenPass(p.id)">
+                        <img v-if="p.icon" :src="p.icon" alt="" /><span v-else class="blank"></span>
+                        <span class="name">{{ p.name }}</span>
+                        <span class="faint small mono">{{ p.price == null ? 'Off sale' : p.price.toLocaleString() + ' R$' }}</span>
+                    </button>
+                </li>
+            </ul>
+        </section>
+
+        <section v-if="badges?.length" class="stack" style="gap: 12px">
+            <div class="server-bar">
+                <h2>Badges</h2>
+                <span class="faint small">{{ badges.length }} badges</span>
+            </div>
+            <ul class="badges">
+                <li v-for="b in shownBadges" :key="b.id" class="badge">
+                    <img v-if="b.icon" :src="b.icon" alt="" /><span v-else class="blank"></span>
+                    <div style="min-width: 0">
+                        <p class="name">{{ b.name }}</p>
+                        <p class="faint small clamp1">{{ b.description || 'No description' }}</p>
+                    </div>
+                    <div class="metric small">
+                        <span class="mono">{{ (b.winRate * 100).toFixed(1) }}%</span><span class="faint">of players</span>
+                    </div>
+                    <div class="metric small">
+                        <span class="mono">{{ Compact(b.awarded) }}</span
+                        ><span class="faint">earned</span>
+                    </div>
+                </li>
+            </ul>
+            <div v-if="badges.length > 8" class="row" style="justify-content: center">
+                <button class="btn" @click="allBadges = !allBadges">{{ allBadges ? 'Show fewer' : `Show all ${badges.length}` }}</button>
+            </div>
         </section>
 
         <section class="stack" style="gap: 12px">
@@ -421,6 +529,93 @@ onMounted(async () => {
 .link.inline {
     font-size: 12px;
     color: var(--accent);
+}
+
+.instance {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+.private {
+    display: flex;
+    gap: 10px;
+    padding: 12px 16px;
+}
+.private .input {
+    flex: 1;
+    min-width: 0;
+}
+
+.passes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+.pass {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: inherit;
+    text-align: left;
+    width: 100%;
+    height: 100%;
+}
+.pass:hover {
+    border-color: var(--line-strong);
+}
+.pass img,
+.pass .blank {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    background: var(--surface-2);
+    object-fit: cover;
+}
+.pass .name,
+.badge .name {
+    font-size: 13px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.badges {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.badge {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 110px 90px;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+.badge img,
+.badge .blank {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface-2);
+}
+.clamp1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .desc {

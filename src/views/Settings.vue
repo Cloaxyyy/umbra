@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { api, type Settings, type Status } from '../api'
 import { Mb } from '../format'
-import { Toast } from '../store'
+import { StartFriendAlerts, Toast } from '../store'
 import { ACCENTS, ApplyAccent } from '../theme'
 import { CheckForUpdate, InstallUpdate, updates } from '../updater'
 
@@ -77,9 +77,12 @@ function SetAccent(hex: string) {
     ApplyAccent(hex)
     Save()
 }
-function Flip(key: 'multiInstance' | 'serverLocation' | 'discordEnabled' | 'discordJoinButton' | 'closeToTray' | 'autoCheckUpdates') {
+function Flip(
+    key: 'multiInstance' | 'serverLocation' | 'discordEnabled' | 'discordJoinButton' | 'closeToTray' | 'autoCheckUpdates' | 'friendAlerts',
+) {
     s.value![key] = !s.value![key]
     Save()
+    if (key === 'friendAlerts') StartFriendAlerts(s.value!.friendAlerts)
 }
 async function ToggleAutostart() {
     try {
@@ -283,6 +286,19 @@ onUnmounted(() => clearInterval(timer))
 
             <section class="card stack" style="gap: 18px">
                 <h2 class="group">While you play</h2>
+                <div class="setting">
+                    <div>
+                        <h3>Friend alerts</h3>
+                        <p class="muted">Pops up when a friend of your active account starts playing, with a button to join them.</p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.friendAlerts"
+                        aria-label="Friend alerts"
+                        @click="Flip('friendAlerts')"
+                    ></button>
+                </div>
                 <div class="setting">
                     <div>
                         <h3>Show server location</h3>

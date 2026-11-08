@@ -22,6 +22,7 @@ pub struct Settings {
     pub accent: String,
     pub overlay_enabled: bool,
     pub overlay_hotkey: String,
+    pub friend_alerts: bool,
 }
 
 impl Default for Settings {
@@ -39,6 +40,7 @@ impl Default for Settings {
             accent: "#9580ff".into(),
             overlay_enabled: true,
             overlay_hotkey: "Ctrl+Shift+U".into(),
+            friend_alerts: true,
         }
     }
 }

@@ -173,7 +173,7 @@ pub async fn headshots(ids: &[u64]) -> HashMap<u64, String> {
         .collect()
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(
     tag = "kind",
     rename_all = "lowercase",
@@ -204,6 +204,15 @@ pub fn parse_place(input: &str) -> Option<u64> {
         .ok()
 }
 
+pub fn link_code(input: &str) -> Option<String> {
+    let i = input.find("privateServerLinkCode=")? + "privateServerLinkCode=".len();
+    let code: String = input[i..]
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    (!code.is_empty() && code.len() <= 64).then_some(code)
+}
+
 fn valid_job_id(s: &str) -> bool {
     !s.is_empty() && s.len() <= 64 && s.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
 }
@@ -214,6 +223,11 @@ pub async fn placelauncher(target: &Target, tracker: u64) -> Result<Option<Strin
         Target::App => None,
         Target::Place { place, job_id } => {
             let pid = parse_place(place).ok_or("Enter a place ID or a roblox.com/games link.")?;
+            if let Some(code) = link_code(place) {
+                return Ok(Some(format!(
+                    "{base}?request=RequestPrivateGame&browserTrackerId={tracker}&placeId={pid}&accessCode=&linkCode={code}"
+                )));
+            }
             match job_id.as_deref().map(str::trim).filter(|j| !j.is_empty()) {
                 Some(j) if !valid_job_id(j) => {
                     return Err("That server ID doesn't look right.".into());
@@ -268,6 +282,15 @@ mod tests {
             Some(606849621)
         );
         assert_eq!(parse_place("adopt me"), None);
+        assert_eq!(
+            link_code("https://www.roblox.com/games/606849621/Jailbreak?privateServerLinkCode=48727401&x=1").as_deref(),
+            Some("48727401")
+        );
+        assert_eq!(
+            link_code("https://www.roblox.com/games/1?privateServerLinkCode=a+b"),
+            Some("a".into())
+        );
+        assert_eq!(link_code("https://www.roblox.com/games/1"), None);
     }
 
     #[test]

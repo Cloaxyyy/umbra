@@ -1,5 +1,5 @@
 import { reactive, watch } from 'vue'
-import { api, type Account, type Chart, type Favorite, type Instance, type ProfileStore, type Target } from './api'
+import { api, type Account, type Chart, type Favorite, type Friend, type Instance, type ProfileStore, type Target } from './api'
 import { Sleep } from './format'
 
 export type View = 'home' | 'discover' | 'game' | 'friends' | 'catalog' | 'avatar' | 'trades' | 'accounts' | 'instances' | 'settings'
@@ -33,7 +33,7 @@ export const store = reactive({
     favorites: [] as Favorite[],
     palette: false,
     adding: false,
-    toast: null as { kind: 'good' | 'bad'; text: string; id: number } | null,
+    toast: null as { kind: 'good' | 'bad'; text: string; id: number; action?: ToastAction } | null,
 })
 
 watch(
@@ -71,11 +71,20 @@ export function Forward() {
     }
 }
 
+export interface ToastAction {
+    label: string
+    run: () => void
+}
 let toastTimer = 0
-export function Toast(kind: 'good' | 'bad', text: string) {
-    store.toast = { kind, text, id: Date.now() }
+export function Toast(kind: 'good' | 'bad', text: string, action?: ToastAction) {
+    store.toast = { kind, text, id: Date.now(), action }
     clearTimeout(toastTimer)
-    toastTimer = window.setTimeout(() => (store.toast = null), kind === 'bad' ? 7000 : 3500)
+    toastTimer = window.setTimeout(() => (store.toast = null), action ? 10000 : kind === 'bad' ? 7000 : 3500)
+}
+export function RunToastAction() {
+    const a = store.toast?.action
+    store.toast = null
+    a?.run()
 }
 
 export async function RefreshAccounts() {
@@ -145,6 +154,46 @@ export async function QuickPlay(placeId: number, jobId?: string) {
         return
     }
     await LaunchMany([a.userId], { kind: 'place', place: String(placeId), jobId })
+}
+
+const FRIEND_POLL_MS = 60_000
+let friendTimer = 0
+let watchedId: number | null = null
+const playing = new Set<number>()
+
+export function StartFriendAlerts(on: boolean) {
+    clearInterval(friendTimer)
+    watchedId = null
+    playing.clear()
+    if (!on) return
+    PollFriends()
+    friendTimer = window.setInterval(PollFriends, FRIEND_POLL_MS)
+}
+
+async function PollFriends() {
+    const a = ActiveAccount()
+    if (!a) return
+    let list: Friend[]
+    try {
+        list = await api.friends(a.userId)
+    } catch {
+        return
+    }
+    const now = list.filter((f) => f.status === 2 && f.placeId)
+    const first = watchedId !== a.userId
+    const fresh = first ? [] : now.filter((f) => !playing.has(f.userId))
+    watchedId = a.userId
+    playing.clear()
+    for (const f of now) playing.add(f.userId)
+    if (fresh.length === 1) {
+        const f = fresh[0]
+        Toast('good', `${f.displayName} started playing ${f.lastLocation || 'a game'}.`, {
+            label: 'Join',
+            run: () => QuickPlay(f.placeId!, f.gameId ?? undefined),
+        })
+    } else if (fresh.length > 1) {
+        Toast('good', `${fresh.length} friends started playing.`, { label: 'See friends', run: () => Go({ view: 'friends' }) })
+    }
 }
 
 export async function RefreshFavorites() {

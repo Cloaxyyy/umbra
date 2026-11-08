@@ -5,7 +5,21 @@ import CommandPalette from './components/CommandPalette.vue'
 import Icon from './components/Icon.vue'
 import TitleBar from './components/TitleBar.vue'
 import type { IconName } from './icons'
-import { Back, Forward, Go, RefreshAccounts, RefreshFavorites, RefreshProfiles, RefreshRunning, store, Toast, type View } from './store'
+import { LoadAllowlist } from './flags'
+import {
+    Back,
+    Forward,
+    Go,
+    RefreshAccounts,
+    RefreshFavorites,
+    RefreshProfiles,
+    RefreshRunning,
+    RunToastAction,
+    StartFriendAlerts,
+    store,
+    Toast,
+    type View,
+} from './store'
 import { ApplyAccent } from './theme'
 import { CheckForUpdate } from './updater'
 import Accounts from './views/Accounts.vue'
@@ -55,10 +69,12 @@ onMounted(async () => {
     RefreshProfiles()
     RefreshRunning()
     RefreshFavorites()
+    LoadAllowlist()
 
     api.getSettings()
         .then((s) => {
             ApplyAccent(s.accent)
+            StartFriendAlerts(s.friendAlerts)
             if (s.autoCheckUpdates) setTimeout(() => CheckForUpdate(false), 5000)
         })
         .catch(() => {})
@@ -67,6 +83,7 @@ onUnmounted(() => {
     window.removeEventListener('mouseup', OnMouse)
     window.removeEventListener('keydown', OnKey)
     clearInterval(timer)
+    StartFriendAlerts(false)
     unlisten?.()
 })
 </script>
@@ -122,7 +139,10 @@ onUnmounted(() => {
         </div>
         <CommandPalette v-if="store.palette" />
         <Transition name="toast">
-            <div v-if="store.toast" :key="store.toast.id" class="toast" :class="store.toast.kind" role="status">{{ store.toast.text }}</div>
+            <div v-if="store.toast" :key="store.toast.id" class="toast" :class="store.toast.kind" role="status">
+                <span>{{ store.toast.text }}</span>
+                <button v-if="store.toast.action" class="btn btn-sm" @click="RunToastAction">{{ store.toast.action.label }}</button>
+            </div>
         </Transition>
     </div>
 </template>
@@ -205,6 +225,9 @@ onUnmounted(() => {
     font-weight: 600;
     user-select: text;
     z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 .toast.good {
     border-color: rgba(63, 224, 160, 0.35);

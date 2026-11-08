@@ -1,25 +1,36 @@
-import type { Flags } from './api'
+import { reactive } from 'vue'
+import { api, type Flags } from './api'
 
-export const ALLOWED = new Set([
-    'DFIntCSGLevelOfDetailSwitchingDistance',
-    'DFIntCSGLevelOfDetailSwitchingDistanceL12',
-    'DFIntCSGLevelOfDetailSwitchingDistanceL23',
-    'DFIntCSGLevelOfDetailSwitchingDistanceL34',
-    'FFlagHandleAltEnterFullscreenManually',
-    'DFFlagTextureQualityOverrideEnabled',
-    'DFIntTextureQualityOverride',
-    'FIntDebugForceMSAASamples',
-    'DFFlagDisableDPIScale',
-    'FFlagDebugGraphicsPreferD3D11',
-    'FFlagDebugSkyGray',
-    'DFFlagDebugPauseVoxelizer',
-    'DFIntDebugFRMQualityLevelOverride',
-    'FIntFRMMaxGrassDistance',
-    'FIntFRMMinGrassDistance',
-    'FFlagDebugGraphicsPreferVulkan',
-    'FFlagDebugGraphicsPreferOpenGL',
-    'FIntGrassMovementReducedMotionFactor',
-])
+export const ALLOWED = reactive(
+    new Set([
+        'DFIntCSGLevelOfDetailSwitchingDistance',
+        'DFIntCSGLevelOfDetailSwitchingDistanceL12',
+        'DFIntCSGLevelOfDetailSwitchingDistanceL23',
+        'DFIntCSGLevelOfDetailSwitchingDistanceL34',
+        'FFlagHandleAltEnterFullscreenManually',
+        'DFFlagTextureQualityOverrideEnabled',
+        'DFIntTextureQualityOverride',
+        'FIntDebugForceMSAASamples',
+        'DFFlagDisableDPIScale',
+        'FFlagDebugGraphicsPreferD3D11',
+        'FFlagDebugSkyGray',
+        'DFFlagDebugPauseVoxelizer',
+        'DFIntDebugFRMQualityLevelOverride',
+        'FIntFRMMaxGrassDistance',
+        'FIntFRMMinGrassDistance',
+        'FFlagDebugGraphicsPreferVulkan',
+        'FFlagDebugGraphicsPreferOpenGL',
+        'FIntGrassMovementReducedMotionFactor',
+    ]),
+)
+
+export async function LoadAllowlist() {
+    try {
+        const list = await api.flagAllowlist()
+        ALLOWED.clear()
+        for (const f of list) ALLOWED.add(f)
+    } catch {}
+}
 
 export const IgnoredFlags = (f: Flags) => Object.keys(f).filter((k) => !ALLOWED.has(k))
 

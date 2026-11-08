@@ -20,6 +20,7 @@ export interface Settings {
     accent: string
     overlayEnabled: boolean
     overlayHotkey: string
+    friendAlerts: boolean
 }
 
 export interface GameSession {
@@ -98,6 +99,28 @@ export interface Profile {
 export interface ProfileStore {
     defaultId: string
     profiles: Profile[]
+    games: Record<string, string>
+}
+export interface Badge {
+    id: number
+    name: string
+    description: string
+    awarded: number
+    winRate: number
+    icon: string | null
+}
+export interface Pass {
+    id: number
+    name: string
+    price: number | null
+    icon: string | null
+}
+export interface Preset {
+    id: string
+    name: string
+    accountIds: number[]
+    target: Target
+    profileId: string | null
 }
 export interface Mod {
     id: string
@@ -379,6 +402,13 @@ export const api = {
     saveProfile: (profile: Profile) => invoke<Profile>('save_profile', { profile }),
     deleteProfile: (id: string) => invoke<void>('delete_profile', { id }),
     setDefaultProfile: (id: string) => invoke<void>('set_default_profile', { id }),
+    setGameProfile: (placeId: number, profileId: string | null) => invoke<void>('set_game_profile', { placeId, profileId }),
+    badges: (universeId: number) => invoke<Badge[]>('get_badges', { universeId }),
+    passes: (universeId: number) => invoke<Pass[]>('get_passes', { universeId }),
+    presets: () => invoke<Preset[]>('list_presets'),
+    savePreset: (preset: Preset) => invoke<Preset>('save_preset', { preset }),
+    deletePreset: (id: string) => invoke<void>('delete_preset', { id }),
+    flagAllowlist: () => invoke<string[]>('get_flag_allowlist'),
     mods: () => invoke<Mod[]>('list_mods'),
     importMod: (path: string) => invoke<Mod>('import_mod', { path }),
     deleteMod: (id: string) => invoke<void>('delete_mod', { id }),

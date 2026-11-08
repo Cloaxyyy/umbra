@@ -6,6 +6,7 @@ mod deploy;
 mod discord;
 mod discover;
 mod dpapi;
+mod extras;
 mod favorites;
 mod launch;
 mod logwatch;
@@ -165,7 +166,15 @@ async fn launch_account(
         }
         roblox::Target::Follow { username } => format!("Following {}", username.trim()),
     };
-    let profile_id = profile_id.or_else(|| accounts::profile_of(user_id));
+    let for_game = match &target {
+        roblox::Target::Place { place, .. } => {
+            roblox::parse_place(place).and_then(profiles::game_profile)
+        }
+        _ => None,
+    };
+    let profile_id = profile_id
+        .or(for_game)
+        .or_else(|| accounts::profile_of(user_id));
     start_client(&app, &running, &uri, Some(user_id), label, profile_id).await
 }
 
@@ -488,6 +497,41 @@ fn delete_profile(running: State<'_, launch::Running>, id: String) -> Result<(),
         return Err("Close the Roblox clients using this instance first.".into());
     }
     profiles::delete(&id)
+}
+
+#[tauri::command]
+async fn get_badges(universe_id: u64) -> Result<Vec<extras::Badge>, String> {
+    extras::badges(universe_id).await
+}
+
+#[tauri::command]
+async fn get_passes(universe_id: u64) -> Result<Vec<extras::Pass>, String> {
+    extras::passes(universe_id).await
+}
+
+#[tauri::command]
+async fn get_flag_allowlist() -> Result<Vec<String>, String> {
+    extras::flag_allowlist().await
+}
+
+#[tauri::command]
+fn list_presets() -> Vec<extras::Preset> {
+    extras::presets()
+}
+
+#[tauri::command]
+fn save_preset(preset: extras::Preset) -> Result<extras::Preset, String> {
+    extras::save_preset(preset)
+}
+
+#[tauri::command]
+fn delete_preset(id: String) -> Result<(), String> {
+    extras::delete_preset(&id)
+}
+
+#[tauri::command]
+fn set_game_profile(place_id: u64, profile_id: Option<String>) -> Result<(), String> {
+    profiles::set_game(place_id, profile_id)
 }
 
 #[tauri::command]
@@ -843,6 +887,13 @@ pub fn run() {
             save_profile,
             delete_profile,
             set_default_profile,
+            set_game_profile,
+            get_badges,
+            get_passes,
+            list_presets,
+            get_flag_allowlist,
+            save_preset,
+            delete_preset,
             list_mods,
             import_mod,
             delete_mod,

@@ -68,6 +68,8 @@ impl Default for Profile {
 pub struct Store {
     pub default_id: String,
     pub profiles: Vec<Profile>,
+    #[serde(default)]
+    pub games: std::collections::HashMap<String, String>,
 }
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -102,6 +104,7 @@ fn read() -> Store {
             flags: legacy,
             ..Default::default()
         }],
+        games: Default::default(),
     }
 }
 
@@ -210,6 +213,7 @@ pub fn delete(id: &str) -> Result<(), String> {
             return Err("You need at least one instance.".into());
         }
         s.profiles.retain(|p| p.id != id);
+        s.games.retain(|_, v| v != id);
         if s.default_id == id {
             s.default_id = s.profiles[0].id.clone();
         }
@@ -217,6 +221,31 @@ pub fn delete(id: &str) -> Result<(), String> {
     })?;
     let _ = fs::remove_dir_all(super::paths::instances().join(id));
     Ok(())
+}
+
+pub fn set_game(place_id: u64, profile_id: Option<String>) -> Result<(), String> {
+    with(|s| {
+        match profile_id {
+            Some(id) => {
+                if !s.profiles.iter().any(|p| p.id == id) {
+                    return Err("That instance no longer exists.".into());
+                }
+                s.games.insert(place_id.to_string(), id);
+            }
+            None => {
+                s.games.remove(&place_id.to_string());
+            }
+        }
+        Ok(())
+    })
+}
+
+pub fn game_profile(place_id: u64) -> Option<String> {
+    let s = load();
+    s.games
+        .get(&place_id.to_string())
+        .filter(|id| s.profiles.iter().any(|p| &p.id == *id))
+        .cloned()
 }
 
 pub fn set_default(id: &str) -> Result<(), String> {
