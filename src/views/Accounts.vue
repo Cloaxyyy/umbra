@@ -181,6 +181,14 @@ async function Trim(pid: number) {
     }
     RefreshRunning()
 }
+async function Mute(pid: number, muted: boolean) {
+    try {
+        await api.setClientMute(pid, muted)
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+    RefreshRunning()
+}
 async function Arrange() {
     try {
         const n = await api.arrangeWindows()
@@ -249,7 +257,8 @@ onUnmounted(() => clearInterval(timer))
     <div class="stack" style="gap: 22px">
         <header class="row between" style="align-items: flex-end; flex-wrap: wrap">
             <div>
-                <h1>Your main and your alts. At the same time.</h1>
+                <h1>Accounts</h1>
+                <p class="muted">Your main and your alts, side by side. Tick accounts to send them into a game together.</p>
             </div>
             <button class="btn btn-primary" :disabled="store.adding" @click="Add">
                 <Icon name="plus" :size="15" />{{ store.adding ? 'Waiting for login…' : 'Add account' }}
@@ -311,7 +320,7 @@ onUnmounted(() => clearInterval(timer))
                         @click="FlipRejoin(a)"
                     ></button>
                 </label>
-                <div class="row" style="gap: 6px; flex-wrap: wrap">
+                <div class="acts">
                     <button class="btn btn-join btn-sm" @click="OpenApp(a)"><Icon name="play" :size="12" />Open Roblox</button>
                     <button v-if="a.userId !== active?.userId" class="btn btn-sm" @click="store.activeId = a.userId">Make active</button>
                     <template v-if="confirmRemove === a.userId">
@@ -320,7 +329,7 @@ onUnmounted(() => clearInterval(timer))
                             <button class="btn btn-sm" @click="Remove(a.userId)">Remove</button>
                         </span>
                     </template>
-                    <button v-else class="btn btn-ghost btn-sm" @click="confirmRemove = a.userId">Remove…</button>
+                    <button v-else class="btn btn-ghost btn-sm remove" @click="confirmRemove = a.userId">Remove…</button>
                 </div>
             </article>
         </section>
@@ -468,6 +477,9 @@ onUnmounted(() => clearInterval(timer))
                             <Icon name="swap" :size="12" />Hop
                         </button>
                     </template>
+                    <button class="btn btn-sm" :aria-pressed="r.muted" @click="Mute(r.pid, !r.muted)">
+                        {{ r.muted ? 'Unmute' : 'Mute' }}
+                    </button>
                     <button class="btn btn-sm" title="Free memory this client isn't using" @click="Trim(r.pid)">Free memory</button>
                     <button class="btn btn-ghost btn-sm" @click="Close(r.pid)">Close</button>
                 </div>
@@ -497,8 +509,20 @@ onUnmounted(() => clearInterval(timer))
 <style scoped>
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 14px;
+}
+.acts {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 4px;
+}
+.acts .remove,
+.acts .confirm {
+    margin-left: auto;
 }
 .acct {
     position: relative;

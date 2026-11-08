@@ -92,6 +92,7 @@ type Toggle =
     | 'labelWindows'
     | 'trimBackground'
     | 'updateAlerts'
+    | 'muteBackground'
 function Flip(key: Toggle) {
     s.value![key] = !s.value![key]
     Save()
@@ -409,6 +410,22 @@ onUnmounted(() => clearInterval(timer))
                         :aria-checked="s.updateAlerts"
                         aria-label="Game update alerts"
                         @click="Flip('updateAlerts')"
+                    ></button>
+                </div>
+                <div class="setting">
+                    <div>
+                        <h3>Only hear the Roblox window you're using</h3>
+                        <p class="muted">
+                            Mutes every Roblox client except the one in front. When you switch to another app, the last one you used stays
+                            audible.
+                        </p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.muteBackground"
+                        aria-label="Only hear the Roblox window you're using"
+                        @click="Flip('muteBackground')"
                     ></button>
                 </div>
                 <div class="setting">

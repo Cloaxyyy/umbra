@@ -28,6 +28,7 @@ export interface Settings {
     labelWindows: boolean
     trimBackground: boolean
     updateAlerts: boolean
+    muteBackground: boolean
 }
 
 export interface GameSession {
@@ -72,6 +73,7 @@ export interface Instance {
     secs: number
     priority: 'normal' | 'low' | 'idle'
     memoryMb: number
+    muted: boolean
     game: GameSession | null
 }
 export interface Exited {
@@ -178,6 +180,34 @@ export interface Stats {
     week: number[]
     games: GameStat[]
     accounts: { userId: number; secs: number; sessions: number }[]
+}
+export interface Purchase {
+    at: number
+    robux: number
+    name: string
+    kind: string
+    universeId: number | null
+    game: string | null
+    seller: string
+}
+export interface SpendGroup {
+    key: string
+    universeId: number | null
+    robux: number
+    count: number
+    icon: string | null
+}
+export interface Spending {
+    total: number
+    count: number
+    thisMonth: number
+    months: [string, number][]
+    kinds: SpendGroup[]
+    games: SpendGroup[]
+    biggest: Purchase[]
+    recent: Purchase[]
+    since: number | null
+    partial: boolean
 }
 export interface Mod {
     id: string
@@ -470,6 +500,8 @@ export const api = {
     setAccountRejoin: (userId: number, on: boolean) => invoke<void>('set_account_rejoin', { userId, on }),
     recentDisconnects: () => invoke<Disconnect[]>('recent_disconnects'),
     trimClient: (pid: number) => invoke<number>('trim_client', { pid }),
+    setClientMute: (pid: number, muted: boolean) => invoke<void>('set_client_mute', { pid, muted }),
+    spending: (userId: number, tzOffsetMin: number) => invoke<Spending>('get_spending', { userId, tzOffsetMin }),
     arrangeWindows: () => invoke<number>('arrange_windows'),
     gamesUpdated: (universeIds: number[]) => invoke<Record<string, string>>('games_updated', { universeIds }),
     stats: (userId: number | null, tzOffsetMin: number) => invoke<Stats>('get_stats', { userId, tzOffsetMin }),

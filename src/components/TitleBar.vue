@@ -223,7 +223,7 @@ button.crumb:hover {
 .find kbd {
     margin-left: auto;
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 11px;
     padding: 1px 6px;
     border-radius: 5px;
     border: 1px solid var(--line-strong);

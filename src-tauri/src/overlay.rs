@@ -71,7 +71,7 @@ pub(crate) fn window_of(pid: u32) -> isize {
     state.1
 }
 
-fn foreground_pid() -> u32 {
+pub(crate) fn foreground_pid() -> u32 {
     let mut pid = 0u32;
     unsafe { GetWindowThreadProcessId(GetForegroundWindow(), &mut pid) };
     pid

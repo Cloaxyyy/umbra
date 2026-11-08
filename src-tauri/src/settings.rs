@@ -30,6 +30,7 @@ pub struct Settings {
     pub label_windows: bool,
     pub trim_background: bool,
     pub update_alerts: bool,
+    pub mute_background: bool,
 }
 
 impl Default for Settings {
@@ -55,6 +56,7 @@ impl Default for Settings {
             label_windows: false,
             trim_background: false,
             update_alerts: false,
+            mute_background: false,
         }
     }
 }

@@ -34,6 +34,7 @@ struct Entry {
     started: Instant,
     killed: bool,
     priority: String,
+    muted: bool,
 }
 
 #[derive(Default)]
@@ -52,6 +53,7 @@ pub struct Instance {
     pub secs: u64,
     pub priority: String,
     pub memory_mb: u64,
+    pub muted: bool,
     pub game: Option<super::logwatch::Session>,
 }
 
@@ -77,6 +79,7 @@ impl Entry {
             secs: self.started.elapsed().as_secs(),
             priority: self.priority.clone(),
             memory_mb: memory_mb(&self.child),
+            muted: self.muted,
             game: None,
         }
     }
@@ -114,6 +117,7 @@ impl Running {
             started: Instant::now(),
             killed: false,
             priority: "normal".into(),
+            muted: false,
         });
         pid
     }
@@ -193,6 +197,25 @@ impl Running {
         });
         self.exited.lock().unwrap().extend(exited.iter().cloned());
         exited
+    }
+
+    pub fn set_muted(&self, pid: u32, muted: bool) -> Result<(), String> {
+        let mut v = self.entries.lock().unwrap();
+        let e = v
+            .iter_mut()
+            .find(|e| e.child.id() == pid)
+            .ok_or("That client already closed.")?;
+        e.muted = muted;
+        Ok(())
+    }
+
+    pub fn mute_states(&self) -> Vec<(u32, bool)> {
+        self.entries
+            .lock()
+            .unwrap()
+            .iter_mut()
+            .filter_map(|e| matches!(e.child.try_wait(), Ok(None)).then(|| (e.child.id(), e.muted)))
+            .collect()
     }
 
     pub fn pid_of(&self, user_id: u64) -> Option<u32> {

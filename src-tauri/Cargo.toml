@@ -31,6 +31,7 @@ base64 = "0.22"
 urlencoding = "2"
 png = "0.18"
 tiny_http = "0.12"
+windows = { version = "0.62", features = ["Win32_Media_Audio", "Win32_System_Com"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

@@ -159,6 +159,17 @@ async function Trim() {
     busy.value = ''
     Refresh()
 }
+async function FlipMute() {
+    const c = client.value
+    if (!c) return
+    try {
+        await api.setClientMute(c.pid, !c.muted)
+        Say('good', c.muted ? 'Sound is back on.' : 'Muted. Other clients keep their sound.')
+    } catch (e) {
+        Say('bad', String(e))
+    }
+    Refresh()
+}
 async function FlipRejoin() {
     const a = account.value
     if (!a) return
@@ -458,7 +469,12 @@ onUnmounted(() => {
                         </div>
                         <div class="row between">
                             <span class="faint small">Using {{ client.memoryMb }} MB of memory</span>
-                            <button class="btn btn-sm" :disabled="!!busy" @click="Trim">Free memory</button>
+                            <span class="row" style="gap: 6px">
+                                <button class="btn btn-sm" :aria-pressed="client.muted" @click="FlipMute">
+                                    {{ client.muted ? 'Unmute' : 'Mute' }}
+                                </button>
+                                <button class="btn btn-sm" :disabled="!!busy" @click="Trim">Free memory</button>
+                            </span>
                         </div>
                     </div>
 

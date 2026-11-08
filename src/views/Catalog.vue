@@ -361,7 +361,7 @@ onMounted(async () => {
     left: 8px;
     padding: 2px 8px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     background: rgba(0, 0, 0, 0.75);
     color: var(--fg-2);
@@ -405,7 +405,7 @@ onMounted(async () => {
     font-weight: 600;
 }
 .robux {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 900;
     color: var(--fg-3);
 }

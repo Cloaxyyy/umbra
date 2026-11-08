@@ -1,4 +1,5 @@
 mod accounts;
+mod audio;
 mod avatar;
 mod bridge;
 mod builder;
@@ -20,6 +21,7 @@ mod profiles;
 mod recovery;
 mod roblox;
 mod settings;
+mod spending;
 mod stats;
 mod theme;
 mod trades;
@@ -528,7 +530,22 @@ fn window_tools(app: &AppHandle, s: &settings::Settings, tick: u64) {
     if s.trim_background && tick % 60 == 0 {
         running.trim_background();
     }
+    let clients = running.mute_states();
+    let pids: Vec<u32> = clients.iter().map(|c| c.0).collect();
+    let fg = overlay::foreground_pid();
+    let mut last = LAST_FOCUSED.lock().unwrap();
+    if pids.contains(&fg) {
+        *last = Some(fg);
+    }
+    let focused = last.filter(|p| pids.contains(p));
+    drop(last);
+    for (pid, muted) in audio::desired(&clients, focused, s.mute_background) {
+        audio::ensure(pid, muted, tick % 5 == 0);
+    }
+    audio::forget_except(&pids);
 }
+
+static LAST_FOCUSED: std::sync::Mutex<Option<u32>> = std::sync::Mutex::new(None);
 
 fn background_loop(app: AppHandle) {
     let since = SystemTime::now();
@@ -578,6 +595,22 @@ fn show_main(app: &AppHandle) {
 #[tauri::command]
 fn set_account_profile(user_id: u64, profile_id: Option<String>) -> Result<(), String> {
     accounts::set_profile(user_id, profile_id)
+}
+
+#[tauri::command]
+async fn get_spending(user_id: u64, tz_offset_min: i32) -> Result<spending::Spending, String> {
+    let cookie = accounts::cookie(user_id)?;
+    spending::load(user_id, &cookie, unix_now(), tz_offset_min as i64 * 60).await
+}
+
+#[tauri::command]
+fn set_client_mute(
+    running: State<'_, launch::Running>,
+    pid: u32,
+    muted: bool,
+) -> Result<(), String> {
+    running.set_muted(pid, muted)?;
+    audio::set_mute(pid, muted).map(|_| ())
 }
 
 #[tauri::command]
@@ -1056,6 +1089,8 @@ pub fn run() {
             set_game_profile,
             bridge_answer,
             set_account_rejoin,
+            set_client_mute,
+            get_spending,
             recent_disconnects,
             trim_client,
             arrange_windows,

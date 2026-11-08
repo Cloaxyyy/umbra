@@ -351,7 +351,7 @@ onMounted(Load)
     gap: 4px;
 }
 .badge {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     padding: 1px 7px;
     border-radius: 999px;
