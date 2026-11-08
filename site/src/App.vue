@@ -7,7 +7,7 @@ import { CARDS, FAQ, FEATURES, OVERLAY_POINTS, SHOWCASE } from './data'
 import { StartMotion, SwapShot } from './motion'
 import { DOWNLOAD_URL, GITHUB_URL, ISSUES_URL, LICENSE_URL, LOGO_URL, RELEASE_URL, RELEASES_URL } from './links'
 
-const VERSION = '1.0.2'
+const VERSION = '1.0.3'
 const BASE = import.meta.env.BASE_URL
 const SHOTS = `${BASE}shots/`
 const Src = (id: string) => `${SHOTS}${id}-1440.webp`

@@ -1,5 +1,5 @@
 export const DOWNLOAD_URL = 'https://github.com/Cloaxyyy/umbra/releases/latest'
-export const RELEASE_URL = 'https://github.com/Cloaxyyy/umbra/releases/tag/v1.0.2'
+export const RELEASE_URL = 'https://github.com/Cloaxyyy/umbra/releases/tag/v1.0.3'
 export const RELEASES_URL = 'https://github.com/Cloaxyyy/umbra/releases'
 export const ISSUES_URL = 'https://github.com/Cloaxyyy/umbra/issues'
 export const GITHUB_URL = 'https://github.com/Cloaxyyy/umbra'
