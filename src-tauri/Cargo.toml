@@ -30,6 +30,7 @@ dirs = "6"
 base64 = "0.22"
 urlencoding = "2"
 png = "0.18"
+tiny_http = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

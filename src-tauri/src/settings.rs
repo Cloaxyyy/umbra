@@ -26,6 +26,7 @@ pub struct Settings {
     pub overlay_friends_here: bool,
     pub overlay_recent: bool,
     pub overlay_server_ip: bool,
+    pub extension_bridge: bool,
 }
 
 impl Default for Settings {
@@ -47,6 +48,7 @@ impl Default for Settings {
             overlay_friends_here: false,
             overlay_recent: false,
             overlay_server_ip: false,
+            extension_bridge: true,
         }
     }
 }

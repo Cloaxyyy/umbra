@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
-import { api } from './api'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { api, type BridgeRequest } from './api'
 import CommandPalette from './components/CommandPalette.vue'
 import Icon from './components/Icon.vue'
 import TitleBar from './components/TitleBar.vue'
@@ -60,11 +60,27 @@ function OnKey(e: KeyboardEvent) {
 
 let timer = 0
 let unlisten: (() => void) | undefined
+let unPair: (() => void) | undefined
+let unFav: (() => void) | undefined
+const pairing = ref<BridgeRequest | null>(null)
+async function AnswerPair(allow: boolean) {
+    const r = pairing.value
+    pairing.value = null
+    if (!r) return
+    try {
+        await api.bridgeAnswer(r.id, allow)
+        Toast('good', allow ? 'The browser extension is connected.' : 'Connection refused.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
 onMounted(async () => {
     window.addEventListener('mouseup', OnMouse)
     window.addEventListener('keydown', OnKey)
     timer = window.setInterval(RefreshRunning, 3000)
     unlisten = await api.onLaunchError((m) => Toast('bad', m))
+    unPair = await api.onBridgePair((r) => (pairing.value = r))
+    unFav = await api.onFavoritesChanged(() => RefreshFavorites())
     RefreshAccounts().catch((e) => Toast('bad', String(e)))
     RefreshProfiles()
     RefreshRunning()
@@ -85,6 +101,8 @@ onUnmounted(() => {
     clearInterval(timer)
     StartFriendAlerts(false)
     unlisten?.()
+    unPair?.()
+    unFav?.()
 })
 </script>
 
@@ -138,6 +156,21 @@ onUnmounted(() => {
             </main>
         </div>
         <CommandPalette v-if="store.palette" />
+        <div v-if="pairing" class="pair-scrim">
+            <div class="pair card" role="alertdialog" aria-modal="true" aria-labelledby="pair-title" aria-describedby="pair-desc">
+                <h2 id="pair-title">Connect the browser extension?</h2>
+                <p id="pair-desc" class="muted">
+                    <b>{{ pairing.label }}</b> wants to connect to Umbra. It will see your account names and running clients, launch games
+                    with your accounts, control clients and change favorites. It never sees your Roblox sessions.
+                </p>
+                <p class="faint small mono">{{ pairing.origin }}</p>
+                <p class="faint small">Only allow this if you just pressed Connect in the Umbra extension.</p>
+                <div class="confirm">
+                    <button class="btn btn-danger" @click="AnswerPair(false)">Deny</button>
+                    <button class="btn" @click="AnswerPair(true)">Allow</button>
+                </div>
+            </div>
+        </div>
         <Transition name="toast">
             <div v-if="store.toast" :key="store.toast.id" class="toast" :class="store.toast.kind" role="status">
                 <span>{{ store.toast.text }}</span>
@@ -148,6 +181,30 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.pair-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    animation: fade-in 0.15s ease both;
+}
+.pair {
+    width: min(460px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 22px;
+    animation: pop 0.22s var(--ease-out) both;
+}
+.pair h2 {
+    font-size: 18px;
+}
+.pair .confirm {
+    margin-top: 6px;
+}
 .app {
     display: grid;
     grid-template-rows: auto 1fr;

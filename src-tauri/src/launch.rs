@@ -63,6 +63,20 @@ pub struct Exited {
     pub crashed: bool,
 }
 
+impl Entry {
+    fn instance(&self) -> Instance {
+        Instance {
+            pid: self.child.id(),
+            user_id: self.user_id,
+            label: self.label.clone(),
+            profile_id: self.profile_id.clone(),
+            secs: self.started.elapsed().as_secs(),
+            priority: self.priority.clone(),
+            game: None,
+        }
+    }
+}
+
 impl Running {
     pub fn add(
         &self,
@@ -151,19 +165,15 @@ impl Running {
                 false
             }
         });
-        let alive = v
-            .iter()
-            .map(|e| Instance {
-                pid: e.child.id(),
-                user_id: e.user_id,
-                label: e.label.clone(),
-                profile_id: e.profile_id.clone(),
-                secs: e.started.elapsed().as_secs(),
-                priority: e.priority.clone(),
-                game: None,
-            })
-            .collect();
+        let alive = v.iter().map(Entry::instance).collect();
         (alive, exited)
+    }
+
+    pub fn snapshot(&self) -> Vec<Instance> {
+        let mut v = self.0.lock().unwrap();
+        v.iter_mut()
+            .filter_map(|e| matches!(e.child.try_wait(), Ok(None)).then(|| e.instance()))
+            .collect()
     }
 
     pub fn kill(&self, pid: u32) -> Result<(), String> {

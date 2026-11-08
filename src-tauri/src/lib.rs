@@ -1,5 +1,6 @@
 mod accounts;
 mod avatar;
+mod bridge;
 mod builder;
 mod catalog;
 mod deploy;
@@ -478,6 +479,21 @@ fn set_account_profile(user_id: u64, profile_id: Option<String>) -> Result<(), S
 }
 
 #[tauri::command]
+fn bridge_answer(id: String, allow: bool) -> Result<(), String> {
+    bridge::answer(&id, allow)
+}
+
+#[tauri::command]
+fn bridge_grants() -> Vec<serde_json::Value> {
+    bridge::grants()
+}
+
+#[tauri::command]
+fn bridge_revoke(id: Option<String>) -> Result<(), String> {
+    bridge::revoke(id.as_deref())
+}
+
+#[tauri::command]
 fn list_profiles() -> profiles::Store {
     profiles::load()
 }
@@ -838,6 +854,9 @@ pub fn run() {
                 let _ = app.handle().emit("launch-error", e);
             }
 
+            if uri.is_none() {
+                bridge::start(app.handle().clone());
+            }
             if let Some(uri) = uri {
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
@@ -889,6 +908,9 @@ pub fn run() {
             delete_profile,
             set_default_profile,
             set_game_profile,
+            bridge_answer,
+            bridge_grants,
+            bridge_revoke,
             get_badges,
             get_passes,
             list_presets,

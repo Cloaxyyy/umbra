@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { api, type Settings, type Status } from '../api'
-import { Mb } from '../format'
+import { api, type BridgeGrant, type Settings, type Status } from '../api'
+import { Ago, Mb } from '../format'
 import { StartFriendAlerts, Toast } from '../store'
 import { ACCENTS, ApplyAccent } from '../theme'
 import { CheckForUpdate, InstallUpdate, updates } from '../updater'
@@ -88,6 +88,7 @@ type Toggle =
     | 'overlayFriendsHere'
     | 'overlayRecent'
     | 'overlayServerIp'
+    | 'extensionBridge'
 function Flip(key: Toggle) {
     s.value![key] = !s.value![key]
     Save()
@@ -112,9 +113,28 @@ async function Register() {
     }
 }
 
+const grants = ref<BridgeGrant[]>([])
+const confirmRevokeAll = ref(false)
+async function LoadGrants() {
+    try {
+        grants.value = await api.bridgeGrants()
+    } catch {}
+}
+async function Revoke(id: string | null) {
+    try {
+        await api.bridgeRevoke(id)
+        confirmRevokeAll.value = false
+        Toast('good', id ? 'Disconnected.' : 'Every extension is disconnected.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+    LoadGrants()
+}
+
 let timer = 0
 onMounted(() => {
     Load().catch((e) => Toast('bad', String(e)))
+    LoadGrants()
     const Poll = async () => {
         try {
             discord.value = await api.discordStatus()
@@ -226,6 +246,46 @@ onUnmounted(() => clearInterval(timer))
                         aria-label="Server address"
                         @click="Flip('overlayServerIp')"
                     ></button>
+                </div>
+            </section>
+
+            <section class="card stack" style="gap: 18px">
+                <h2 class="group">Browser extension</h2>
+                <div class="setting">
+                    <div>
+                        <h3>Allow the Umbra extension</h3>
+                        <p class="muted">
+                            Lets the Umbra browser extension launch games with your accounts and control running clients. Only extensions
+                            you approve can connect, and only from this PC.
+                        </p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.extensionBridge"
+                        aria-label="Allow the Umbra extension"
+                        @click="Flip('extensionBridge')"
+                    ></button>
+                </div>
+                <div v-for="g in grants" :key="g.id" class="setting">
+                    <div>
+                        <h3>{{ g.label }}</h3>
+                        <p class="muted">
+                            Connected {{ Ago(g.created) }} · <span class="mono small">{{ g.origin }}</span>
+                        </p>
+                    </div>
+                    <button class="btn btn-sm" @click="Revoke(g.id)">Disconnect</button>
+                </div>
+                <div v-if="grants.length > 1" class="setting">
+                    <div>
+                        <h3>Disconnect everything</h3>
+                        <p class="muted">Every connected extension has to ask again.</p>
+                    </div>
+                    <span v-if="confirmRevokeAll" class="confirm">
+                        <button class="btn btn-danger btn-sm" @click="confirmRevokeAll = false">Cancel</button>
+                        <button class="btn btn-sm" @click="Revoke(null)">Disconnect all</button>
+                    </span>
+                    <button v-else class="btn btn-sm" @click="confirmRevokeAll = true">Disconnect all…</button>
                 </div>
             </section>
 

@@ -24,6 +24,7 @@ export interface Settings {
     overlayFriendsHere: boolean
     overlayRecent: boolean
     overlayServerIp: boolean
+    extensionBridge: boolean
 }
 
 export interface GameSession {
@@ -99,6 +100,17 @@ export interface Profile {
     playtimeSecs: number
     lastPlayed: number | null
     history: Session[]
+}
+export interface BridgeGrant {
+    id: string
+    label: string
+    origin: string
+    created: number
+}
+export interface BridgeRequest {
+    id: string
+    label: string
+    origin: string
 }
 export interface ProfileTheme {
     cursor: boolean
@@ -418,6 +430,11 @@ export const api = {
     savePreset: (preset: Preset) => invoke<Preset>('save_preset', { preset }),
     deletePreset: (id: string) => invoke<void>('delete_preset', { id }),
     flagAllowlist: () => invoke<string[]>('get_flag_allowlist'),
+    bridgeAnswer: (id: string, allow: boolean) => invoke<void>('bridge_answer', { id, allow }),
+    bridgeGrants: () => invoke<BridgeGrant[]>('bridge_grants'),
+    bridgeRevoke: (id: string | null) => invoke<void>('bridge_revoke', { id }),
+    onBridgePair: (cb: (r: BridgeRequest) => void) => listen<BridgeRequest>('bridge-pair', (e) => cb(e.payload)),
+    onFavoritesChanged: (cb: () => void) => listen('favorites-changed', () => cb()),
     mods: () => invoke<Mod[]>('list_mods'),
     importMod: (path: string) => invoke<Mod>('import_mod', { path }),
     deleteMod: (id: string) => invoke<void>('delete_mod', { id }),
