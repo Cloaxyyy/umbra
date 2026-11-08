@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "moduleResolution": "bundler",
+        "types": ["vite/client"],
+        "skipLibCheck": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "preserve",
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true
+    },
+    "vueCompilerOptions": {
+        "strictTemplates": true,
+        "dataAttributes": ["data-*"]
+    },
+    "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+}
