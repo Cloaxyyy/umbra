@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { api } from './api'
+import CommandPalette from './components/CommandPalette.vue'
 import Icon from './components/Icon.vue'
 import TitleBar from './components/TitleBar.vue'
 import type { IconName } from './icons'
-import { Back, Forward, Go, RefreshAccounts, RefreshProfiles, RefreshRunning, store, Toast, type View } from './store'
+import { Back, Forward, Go, RefreshAccounts, RefreshFavorites, RefreshProfiles, RefreshRunning, store, Toast, type View } from './store'
+import { ApplyAccent } from './theme'
 import { CheckForUpdate } from './updater'
 import Accounts from './views/Accounts.vue'
 import Avatar from './views/Avatar.vue'
 import Trades from './views/Trades.vue'
 import Catalog from './views/Catalog.vue'
 import Discover from './views/Discover.vue'
+import Friends from './views/Friends.vue'
 import Game from './views/Game.vue'
 import Home from './views/Home.vue'
 import Instances from './views/Instances.vue'
@@ -19,10 +22,11 @@ import Settings from './views/Settings.vue'
 const NAV: { id: View; label: string; icon: IconName }[] = [
     { id: 'home', label: 'Launchpad', icon: 'rocket' },
     { id: 'discover', label: 'Discover', icon: 'gamepad' },
+    { id: 'friends', label: 'Friends', icon: 'users' },
     { id: 'catalog', label: 'Catalog', icon: 'bag' },
     { id: 'avatar', label: 'Avatar', icon: 'shirt' },
     { id: 'trades', label: 'Trades', icon: 'swap' },
-    { id: 'accounts', label: 'Accounts', icon: 'users' },
+    { id: 'accounts', label: 'Accounts', icon: 'idcard' },
     { id: 'instances', label: 'Instances', icon: 'layers' },
 ]
 const IsActive = (id: View) => store.route.view === id || (id === 'discover' && store.route.view === 'game')
@@ -34,6 +38,10 @@ function OnMouse(e: MouseEvent) {
 function OnKey(e: KeyboardEvent) {
     if (e.altKey && e.key === 'ArrowLeft') Back()
     if (e.altKey && e.key === 'ArrowRight') Forward()
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        store.palette = !store.palette
+    }
 }
 
 let timer = 0
@@ -46,9 +54,11 @@ onMounted(async () => {
     RefreshAccounts().catch((e) => Toast('bad', String(e)))
     RefreshProfiles()
     RefreshRunning()
+    RefreshFavorites()
 
     api.getSettings()
         .then((s) => {
+            ApplyAccent(s.accent)
             if (s.autoCheckUpdates) setTimeout(() => CheckForUpdate(false), 5000)
         })
         .catch(() => {})
@@ -92,21 +102,25 @@ onUnmounted(() => {
                 </nav>
             </aside>
             <main class="content">
-                <Home v-if="store.route.view === 'home'" />
-                <Discover v-else-if="store.route.view === 'discover'" />
-                <Game
-                    v-else-if="store.route.view === 'game' && store.route.universeId"
-                    :key="store.route.universeId"
-                    :universe-id="store.route.universeId"
-                />
-                <Catalog v-else-if="store.route.view === 'catalog'" />
-                <Avatar v-else-if="store.route.view === 'avatar'" />
-                <Trades v-else-if="store.route.view === 'trades'" />
-                <Accounts v-else-if="store.route.view === 'accounts'" />
-                <Instances v-else-if="store.route.view === 'instances'" />
-                <Settings v-else />
+                <Transition name="page" mode="out-in">
+                    <Home v-if="store.route.view === 'home'" />
+                    <Discover v-else-if="store.route.view === 'discover'" />
+                    <Friends v-else-if="store.route.view === 'friends'" />
+                    <Game
+                        v-else-if="store.route.view === 'game' && store.route.universeId"
+                        :key="store.route.universeId"
+                        :universe-id="store.route.universeId"
+                    />
+                    <Catalog v-else-if="store.route.view === 'catalog'" />
+                    <Avatar v-else-if="store.route.view === 'avatar'" />
+                    <Trades v-else-if="store.route.view === 'trades'" />
+                    <Accounts v-else-if="store.route.view === 'accounts'" />
+                    <Instances v-else-if="store.route.view === 'instances'" />
+                    <Settings v-else />
+                </Transition>
             </main>
         </div>
+        <CommandPalette v-if="store.palette" />
         <Transition name="toast">
             <div v-if="store.toast" :key="store.toast.id" class="toast" :class="store.toast.kind" role="status">{{ store.toast.text }}</div>
         </Transition>
@@ -166,7 +180,7 @@ onUnmounted(() => {
     bottom: 11px;
     width: 3px;
     border-radius: 0 3px 3px 0;
-    background: var(--grad);
+    background: var(--accent);
 }
 .rail-btn:disabled {
     opacity: 0.4;
@@ -184,7 +198,7 @@ onUnmounted(() => {
     max-width: 420px;
     padding: 12px 16px;
     border-radius: 12px;
-    background: var(--surface-2);
+    background: var(--panel);
     border: 1px solid var(--line-strong);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
     font-size: 13px;

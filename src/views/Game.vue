@@ -3,11 +3,16 @@ import { computed, onMounted, ref } from 'vue'
 import { api, type GameDetail, type Server } from '../api'
 import Icon from '../components/Icon.vue'
 import { Compact, LikePct } from '../format'
-import { ActiveAccount, Go, LaunchMany, store, Toast } from '../store'
+import { ActiveAccount, Go, IsFavorite, LaunchMany, store, Toast, ToggleFavorite } from '../store'
 
 const props = defineProps<{ universeId: number }>()
 
 const game = ref<GameDetail | null>(null)
+const fav = computed(() => (game.value ? IsFavorite(game.value.universeId) : false))
+function Star() {
+    const g = game.value
+    if (g) ToggleFavorite({ universeId: g.universeId, rootPlaceId: g.rootPlaceId, name: g.name, icon: g.icon })
+}
 const error = ref('')
 const banner = ref(0)
 const showMore = ref(false)
@@ -144,7 +149,7 @@ onMounted(async () => {
                 <div class="stat">
                     <p class="eyebrow">Rating</p>
                     <p class="val mono">
-                        <span v-if="pct !== null" class="rating">{{ pct }}%</span><span v-else>—</span>
+                        <span v-if="pct !== null" class="rating">{{ pct }}%</span><span v-else>No votes</span>
                         <span class="faint small">({{ Compact(votes) }})</span>
                     </p>
                 </div>
@@ -157,6 +162,15 @@ onMounted(async () => {
                     <p class="val">{{ updated }}</p>
                 </div>
                 <div class="stat launch">
+                    <button
+                        class="btn btn-lg"
+                        :aria-pressed="fav"
+                        :aria-label="fav ? 'Remove from favorites' : 'Add to favorites'"
+                        :title="fav ? 'Remove from favorites' : 'Add to favorites'"
+                        @click="Star"
+                    >
+                        <Icon name="star" :size="16" :filled="fav" :class="{ starred: fav }" />
+                    </button>
                     <button class="btn btn-primary btn-lg" :disabled="!!launching" @click="Join()">
                         <Icon name="play" :size="16" />{{
                             launching === 'any' ? 'Launching…' : pickedIds.length > 1 ? `Play with ${pickedIds.length}` : 'Play'
@@ -228,11 +242,11 @@ onMounted(async () => {
                         </div>
                     </div>
                     <div class="metric">
-                        <Icon name="signal" :size="14" /><span class="mono" :class="PingClass(s.ping)">{{ s.ping ?? '—' }}</span
+                        <Icon name="signal" :size="14" /><span class="mono" :class="PingClass(s.ping)">{{ s.ping ?? '?' }}</span
                         ><span class="faint">ms</span>
                     </div>
                     <div class="metric">
-                        <Icon name="gauge" :size="14" /><span class="mono">{{ s.fps ? Math.round(s.fps) : '—' }}</span
+                        <Icon name="gauge" :size="14" /><span class="mono">{{ s.fps ? Math.round(s.fps) : '?' }}</span
                         ><span class="faint">fps</span>
                     </div>
                     <button class="sid mono" :title="'Copy server ID ' + s.id" @click="CopyId(s.id)">
@@ -254,6 +268,13 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.starred {
+    color: var(--warn);
+}
+.stat.launch {
+    display: flex;
+    gap: 8px;
+}
 .game {
     display: flex;
     flex-direction: column;
@@ -393,9 +414,9 @@ onMounted(async () => {
     background: var(--surface-3);
 }
 .chip[aria-pressed='true'] {
-    background: var(--accent-soft);
-    border-color: var(--accent-line);
-    color: var(--fg);
+    background: #f4f3fa;
+    border-color: transparent;
+    color: #0b0a12;
 }
 .link.inline {
     font-size: 12px;
@@ -464,7 +485,7 @@ onMounted(async () => {
 }
 .pbar div {
     height: 100%;
-    background: var(--grad);
+    background: var(--accent);
     border-radius: 999px;
 }
 .metric {

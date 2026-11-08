@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { api, type Settings, type Status } from '../api'
 import { Mb } from '../format'
 import { Toast } from '../store'
+import { ACCENTS, ApplyAccent } from '../theme'
 import { CheckForUpdate, InstallUpdate, updates } from '../updater'
 
 const s = ref<Settings | null>(null)
@@ -25,6 +26,11 @@ async function Save() {
     } catch (e) {
         Toast('bad', String(e))
     }
+}
+function SetAccent(hex: string) {
+    s.value!.accent = hex
+    ApplyAccent(hex)
+    Save()
 }
 function Flip(key: 'multiInstance' | 'serverLocation' | 'discordEnabled' | 'discordJoinButton' | 'closeToTray' | 'autoCheckUpdates') {
     s.value![key] = !s.value![key]
@@ -66,11 +72,33 @@ onUnmounted(() => clearInterval(timer))
 <template>
     <div class="stack" style="gap: 22px">
         <header>
-            <p class="eyebrow">Settings</p>
             <h1>Settings</h1>
         </header>
 
         <template v-if="s">
+            <section class="card stack" style="gap: 18px">
+                <h2 class="group">Appearance</h2>
+                <div class="setting">
+                    <div>
+                        <h3>Accent color</h3>
+                        <p class="muted">Used for links, focus rings, switches and progress. Everything else stays neutral.</p>
+                    </div>
+                    <div class="accents" role="radiogroup" aria-label="Accent color">
+                        <button
+                            v-for="a in ACCENTS"
+                            :key="a.hex"
+                            class="accent"
+                            role="radio"
+                            :aria-checked="s.accent === a.hex"
+                            :aria-label="a.name"
+                            :title="a.name"
+                            :style="{ background: a.hex }"
+                            @click="SetAccent(a.hex)"
+                        ></button>
+                    </div>
+                </div>
+            </section>
+
             <section class="card stack" style="gap: 18px">
                 <h2 class="group">Updates</h2>
                 <div class="setting">
@@ -277,10 +305,22 @@ onUnmounted(() => clearInterval(timer))
 </template>
 
 <style scoped>
+.accents {
+    display: flex;
+    gap: 8px;
+}
+.accent {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+}
+.accent[aria-checked='true'] {
+    border-color: var(--fg);
+    box-shadow: 0 0 0 2px var(--bg) inset;
+}
 .group {
     font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     color: var(--fg-3);
 }
 .setting {
@@ -343,7 +383,7 @@ onUnmounted(() => clearInterval(timer))
 }
 .fill {
     height: 100%;
-    background: var(--grad);
+    background: var(--accent);
 }
 .small {
     font-size: 12px;

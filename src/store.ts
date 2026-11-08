@@ -1,12 +1,14 @@
 import { reactive, watch } from 'vue'
-import { api, type Account, type Chart, type Instance, type ProfileStore, type Target } from './api'
+import { api, type Account, type Chart, type Favorite, type Instance, type ProfileStore, type Target } from './api'
 import { Sleep } from './format'
 
-export type View = 'home' | 'discover' | 'game' | 'catalog' | 'avatar' | 'trades' | 'accounts' | 'instances' | 'settings'
+export type View = 'home' | 'discover' | 'game' | 'friends' | 'catalog' | 'avatar' | 'trades' | 'accounts' | 'instances' | 'settings'
 export interface Route {
     view: View
     universeId?: number
     name?: string
+    userId?: number
+    query?: string
 }
 
 const ACTIVE_KEY = 'umbra.activeAccount'
@@ -28,6 +30,8 @@ export const store = reactive({
     running: [] as Instance[],
     profiles: null as ProfileStore | null,
     charts: null as Chart[] | null,
+    favorites: [] as Favorite[],
+    palette: false,
     adding: false,
     toast: null as { kind: 'good' | 'bad'; text: string; id: number } | null,
 })
@@ -45,7 +49,7 @@ export function ActiveAccount(): Account | null {
     return store.accounts.find((a) => a.userId === store.activeId) ?? store.accounts[0] ?? null
 }
 
-const SameRoute = (a: Route, b: Route) => a.view === b.view && a.universeId === b.universeId
+const SameRoute = (a: Route, b: Route) => a.view === b.view && a.universeId === b.universeId && a.userId === b.userId && a.query === b.query
 export function Go(r: Route) {
     if (SameRoute(r, store.route)) return
     store.back.push(store.route)
@@ -141,4 +145,24 @@ export async function QuickPlay(placeId: number, jobId?: string) {
         return
     }
     await LaunchMany([a.userId], { kind: 'place', place: String(placeId), jobId })
+}
+
+export async function RefreshFavorites() {
+    try {
+        store.favorites = await api.favorites()
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+
+export const IsFavorite = (universeId: number) => store.favorites.some((f) => f.universeId === universeId)
+
+export async function ToggleFavorite(game: { universeId: number; rootPlaceId: number; name: string; icon: string | null }) {
+    try {
+        const added = await api.toggleFavorite({ ...game, added: 0 })
+        await RefreshFavorites()
+        Toast('good', added ? `Added ${game.name} to favorites.` : `Removed ${game.name} from favorites.`)
+    } catch (e) {
+        Toast('bad', String(e))
+    }
 }

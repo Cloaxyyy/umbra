@@ -236,8 +236,10 @@ onMounted(Load)
                         <template v-if="tab === 'inbound' && open.isActive">
                             <template v-if="confirmDecline">
                                 <span class="muted small">Decline this trade?</span>
-                                <button class="btn btn-danger btn-sm" :disabled="declining" @click="Decline">Decline</button>
-                                <button class="btn btn-ghost btn-sm" @click="confirmDecline = false">Keep</button>
+                                <span class="confirm">
+                                    <button class="btn btn-danger btn-sm" @click="confirmDecline = false">Cancel</button>
+                                    <button class="btn btn-sm" :disabled="declining" @click="Decline">Decline</button>
+                                </span>
                             </template>
                             <button v-else class="btn" @click="confirmDecline = true">Decline…</button>
                         </template>
@@ -282,8 +284,8 @@ onMounted(Load)
     font-size: 13px;
 }
 .seg button[aria-selected='true'] {
-    background: var(--surface-3);
-    color: var(--fg);
+    background: #f4f3fa;
+    color: #0b0a12;
 }
 .totals {
     display: flex;
@@ -320,7 +322,7 @@ onMounted(Load)
     aspect-ratio: 1;
     border-radius: 12px;
     border: 1px solid var(--line);
-    background: radial-gradient(80% 80% at 50% 35%, #232036, #14121f);
+    background: rgba(255, 255, 255, 0.035);
     overflow: hidden;
 }
 .thumb {
@@ -366,7 +368,7 @@ onMounted(Load)
 }
 .badge.gold {
     color: #1a1200;
-    background: linear-gradient(90deg, #ffd36e, #ffb547);
+    background: var(--warn);
     border-color: transparent;
 }
 .split {

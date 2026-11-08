@@ -12,6 +12,7 @@ const menuEl = ref<HTMLElement | null>(null)
 const LABELS: Record<string, string> = {
     home: 'Launchpad',
     discover: 'Discover',
+    friends: 'Friends',
     catalog: 'Catalog',
     avatar: 'Avatar',
     trades: 'Trades',
@@ -66,6 +67,9 @@ onUnmounted(() => document.removeEventListener('mousedown', OnDocClick))
         </div>
 
         <div class="right">
+            <button class="find" title="Search games, players, items and pages" @click="store.palette = true">
+                <Icon name="search" :size="14" />Search<kbd>Ctrl K</kbd>
+            </button>
             <button
                 v-if="updates.available"
                 class="update"
@@ -197,6 +201,32 @@ button.crumb:hover {
     flex: none;
 }
 
+.find {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 28px;
+    padding: 0 6px 0 10px;
+    border-radius: 9px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fg-3);
+    min-width: 190px;
+}
+.find:hover {
+    border-color: var(--line-strong);
+    color: var(--fg-2);
+}
+.find kbd {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--line-strong);
+}
 .update {
     display: inline-flex;
     align-items: center;
@@ -204,8 +234,8 @@ button.crumb:hover {
     height: 28px;
     padding: 0 12px;
     border-radius: 999px;
-    background: var(--grad);
-    color: #fff;
+    background: #f4f3fa;
+    color: #0b0a12;
     font-size: 12px;
     font-weight: 800;
 }
@@ -281,7 +311,7 @@ button.crumb:hover {
     width: 250px;
     padding: 6px;
     border-radius: 12px;
-    background: var(--surface-2);
+    background: var(--panel);
     border: 1px solid var(--line-strong);
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
     display: flex;
@@ -334,7 +364,6 @@ button.crumb:hover {
     height: 8px;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .menu-sep {
     height: 1px;

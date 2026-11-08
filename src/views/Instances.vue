@@ -409,8 +409,10 @@ onUnmounted(() => {
                             <span class="muted small"
                                 >Delete {{ draft.name }}? Its flags, mod choices and history go. Mods stay in the library.</span
                             >
-                            <button class="btn btn-danger btn-sm" @click="Remove">Delete</button>
-                            <button class="btn btn-ghost btn-sm" @click="confirmDelete = false">Keep</button>
+                            <span class="confirm">
+                                <button class="btn btn-danger btn-sm" @click="confirmDelete = false">Cancel</button>
+                                <button class="btn btn-sm" @click="Remove">Delete</button>
+                            </span>
                         </template>
                         <button
                             v-else
@@ -523,8 +525,10 @@ onUnmounted(() => {
                                 ><span class="faint">{{ m.files }} files · {{ Mb(m.bytes) }} · off here</span></label
                             >
                             <template v-if="confirmModDelete === m.id">
-                                <button class="btn btn-danger btn-sm" @click="DeleteMod(m.id)">Delete</button>
-                                <button class="btn btn-ghost btn-sm" @click="confirmModDelete = null">Keep</button>
+                                <span class="confirm">
+                                    <button class="btn btn-danger btn-sm" @click="confirmModDelete = null">Cancel</button>
+                                    <button class="btn btn-sm" @click="DeleteMod(m.id)">Delete</button>
+                                </span>
                             </template>
                             <button
                                 v-else
@@ -774,7 +778,7 @@ onUnmounted(() => {
 }
 .tabs button[aria-selected='true'] {
     color: var(--fg);
-    border-bottom-color: var(--accent);
+    border-bottom-color: var(--fg);
 }
 .body {
     padding: 20px;
@@ -821,8 +825,9 @@ onUnmounted(() => {
     font-size: 13px;
 }
 .seg button[aria-pressed='true'] {
-    background: var(--surface-3);
-    color: var(--fg);
+    background: #f4f3fa;
+    border-color: transparent;
+    color: #0b0a12;
 }
 .stats {
     display: grid;
@@ -853,8 +858,8 @@ onUnmounted(() => {
     color: var(--fg-2);
     padding: 12px 14px;
     border-radius: 12px;
-    background: var(--accent-soft);
-    border: 1px solid var(--accent-line);
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
 }
 .note b {
     color: var(--fg);
@@ -879,7 +884,7 @@ onUnmounted(() => {
     font-size: 14px;
 }
 .preset:hover {
-    border-color: var(--accent-line);
+    border-color: var(--line-strong);
 }
 .controls {
     display: flex;
@@ -932,7 +937,7 @@ onUnmounted(() => {
 }
 .drop.over {
     border-color: var(--accent);
-    background: var(--accent-soft);
+    background: var(--surface-2);
     color: var(--fg);
 }
 .mods {
@@ -953,7 +958,7 @@ onUnmounted(() => {
     border: 1px solid var(--line);
 }
 .mod.on {
-    border-color: var(--accent-line);
+    border-color: rgba(255, 255, 255, 0.35);
 }
 .mod input {
     width: 16px;

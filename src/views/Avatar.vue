@@ -380,8 +380,7 @@ onMounted(async () => {
     border-radius: 14px;
     overflow: hidden;
     border: 1px solid var(--line);
-    background: radial-gradient(60% 50% at 50% 85%, rgba(149, 128, 255, 0.28), transparent 70%),
-        radial-gradient(90% 90% at 50% 30%, #1f1b30, #0e0c17);
+    background: rgba(255, 255, 255, 0.035);
 }
 .render img {
     width: 100%;
@@ -415,8 +414,9 @@ onMounted(async () => {
     font-size: 12px;
 }
 .seg button[aria-pressed='true'] {
-    background: var(--surface-3);
-    color: var(--fg);
+    background: #f4f3fa;
+    border-color: transparent;
+    color: #0b0a12;
 }
 
 .panel {
@@ -445,7 +445,7 @@ onMounted(async () => {
 }
 .tabs button[aria-selected='true'] {
     color: var(--fg);
-    border-bottom-color: var(--accent);
+    border-bottom-color: var(--fg);
 }
 .saving {
     margin-left: auto;
@@ -480,9 +480,9 @@ onMounted(async () => {
     color: var(--fg);
 }
 .chip[aria-pressed='true'] {
-    background: var(--accent-soft);
-    border-color: var(--accent-line);
-    color: var(--fg);
+    background: #f4f3fa;
+    border-color: transparent;
+    color: #0b0a12;
 }
 .dotc {
     width: 12px;
@@ -509,7 +509,7 @@ onMounted(async () => {
     aspect-ratio: 1;
     border-radius: 12px;
     border: 1px solid var(--line);
-    background: radial-gradient(80% 80% at 50% 35%, #232036, #14121f);
+    background: rgba(255, 255, 255, 0.035);
     overflow: hidden;
 }
 .ithumb img {

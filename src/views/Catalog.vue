@@ -4,7 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { api, type CatalogCategory, type CatalogItem, type ItemValue } from '../api'
 import Icon from '../components/Icon.vue'
 import { Compact } from '../format'
-import { ActiveAccount, Go, Toast } from '../store'
+import { ActiveAccount, Go, store, Toast } from '../store'
 import { WearItem } from '../wardrobe'
 
 const SORTS = [
@@ -20,7 +20,7 @@ const categories = ref<CatalogCategory[]>([])
 const category = ref(1)
 const subcategory = ref<number | null>(null)
 const sort = ref(1)
-const keyword = ref('')
+const keyword = ref(store.route.query ?? '')
 const items = ref<CatalogItem[]>([])
 const cursor = ref<string | null>(null)
 const loading = ref(false)
@@ -98,6 +98,15 @@ async function ViewOnRoblox(i: CatalogItem) {
     }
 }
 
+watch(
+    () => store.route.query,
+    (q) => {
+        if (q !== undefined && q !== keyword.value) {
+            keyword.value = q
+            Load(true)
+        }
+    },
+)
 onMounted(async () => {
     try {
         categories.value = await api.catalogCategories()
@@ -301,9 +310,9 @@ onMounted(async () => {
     color: var(--fg);
 }
 .chip[aria-pressed='true'] {
-    background: var(--accent-soft);
-    border-color: var(--accent-line);
-    color: var(--fg);
+    background: #f4f3fa;
+    border-color: transparent;
+    color: #0b0a12;
 }
 .err {
     color: var(--bad);
@@ -331,7 +340,7 @@ onMounted(async () => {
     border-radius: 14px;
     overflow: hidden;
     border: 1px solid var(--line);
-    background: radial-gradient(80% 80% at 50% 35%, #232036, #14121f);
+    background: rgba(255, 255, 255, 0.035);
     margin-bottom: 6px;
 }
 .thumb img {
@@ -354,14 +363,12 @@ onMounted(async () => {
     border-radius: 999px;
     font-size: 10px;
     font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     background: rgba(8, 7, 13, 0.75);
     color: var(--fg-2);
 }
 .tag.limited {
     color: #1a1200;
-    background: linear-gradient(90deg, #ffd36e, #ffb547);
+    background: var(--warn);
 }
 .name {
     font-weight: 700;
@@ -435,7 +442,7 @@ onMounted(async () => {
     gap: 22px;
     padding: 22px;
     border-radius: 18px;
-    background: var(--surface);
+    background: var(--panel);
     border: 1px solid var(--line-strong);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
 }
@@ -462,7 +469,7 @@ onMounted(async () => {
 .big {
     aspect-ratio: 1;
     border-radius: 14px;
-    background: radial-gradient(80% 80% at 50% 35%, #2a2640, #14121f);
+    background: rgba(255, 255, 255, 0.035);
     border: 1px solid var(--line);
 }
 .big img {

@@ -1,19 +1,22 @@
 :root {
     --bg: #08070d;
     --bg-2: #0c0b14;
-    --surface: #12101c;
-    --surface-2: #191626;
-    --surface-3: #221e33;
-    --line: rgba(178, 160, 255, 0.08);
-    --line-strong: rgba(178, 160, 255, 0.16);
+    --surface: rgba(255, 255, 255, 0.03);
+    --surface-2: rgba(255, 255, 255, 0.055);
+    --surface-3: rgba(255, 255, 255, 0.09);
+    --panel: #15131f;
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.13);
+    --select: #f4f3fa;
+    --select-fg: #0b0a12;
     --fg: #efedf7;
     --fg-2: #a29db9;
     --fg-3: #67627e;
     --accent: #9580ff;
-    --accent-soft: rgba(149, 128, 255, 0.15);
-    --accent-line: rgba(149, 128, 255, 0.35);
+    --accent-soft: rgba(149, 128, 255, 0.14);
+    --accent-line: rgba(149, 128, 255, 0.4);
     --corona: #62d4ff;
-    --grad: linear-gradient(115deg, #7c66ff 0%, #5b8cff 55%, #62d4ff 100%);
+    --grad: var(--accent);
     --good: #3fe0a0;
     --warn: #ffbd5a;
     --bad: #ff6283;
@@ -107,10 +110,8 @@ code,
     color: var(--fg-3);
 }
 .eyebrow {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--fg-3);
 }
 .row {
@@ -162,22 +163,23 @@ code,
     opacity: 0.45;
 }
 .btn-primary {
-    background: var(--grad);
+    background: var(--select);
     border-color: transparent;
-    color: #fff;
-    box-shadow: 0 6px 22px rgba(124, 102, 255, 0.28);
+    color: var(--select-fg);
 }
 .btn-primary:hover:not(:disabled) {
-    background: var(--grad);
-    filter: brightness(1.1);
+    background: #ffffff;
 }
 .btn-join {
-    background: var(--accent-soft);
-    border-color: var(--accent-line);
-    color: #c4b8ff;
+    background: var(--surface-2);
+    border-color: var(--line-strong);
+    color: var(--fg);
+}
+.btn-join svg {
+    color: var(--accent);
 }
 .btn-join:hover:not(:disabled) {
-    background: rgba(149, 128, 255, 0.24);
+    background: var(--surface-3);
 }
 .btn-ghost {
     background: transparent;
@@ -260,7 +262,7 @@ code,
     font: inherit;
     font-size: 13px;
     color: var(--fg);
-    background: var(--bg-2);
+    background-color: var(--bg-2);
     border: 1px solid var(--line-strong);
     user-select: text;
     min-width: 0;
@@ -362,6 +364,25 @@ textarea {
     to {
         background-position: -200% 0;
     }
+}
+
+select option {
+    background: var(--panel);
+    color: var(--fg);
+}
+.page-enter-active,
+.page-leave-active {
+    transition: opacity 0.12s ease;
+}
+.page-enter-from,
+.page-leave-to {
+    opacity: 0;
+}
+.confirm {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
 }
 
 @media (prefers-reduced-motion: reduce) {

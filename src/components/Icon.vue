@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ICONS, type IconName } from '../icons'
-withDefaults(defineProps<{ name: IconName; size?: number; stroke?: number }>(), { size: 18, stroke: 1.9 })
+withDefaults(defineProps<{ name: IconName; size?: number; stroke?: number; filled?: boolean }>(), { size: 18, stroke: 1.9, filled: false })
 </script>
 
 <template>
@@ -8,7 +8,7 @@ withDefaults(defineProps<{ name: IconName; size?: number; stroke?: number }>(), 
         :width="size"
         :height="size"
         viewBox="0 0 24 24"
-        fill="none"
+        :fill="filled ? 'currentColor' : 'none'"
         stroke="currentColor"
         :stroke-width="stroke"
         stroke-linecap="round"

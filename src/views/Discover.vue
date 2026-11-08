@@ -5,15 +5,29 @@ import GameTile from '../components/GameTile.vue'
 import Icon from '../components/Icon.vue'
 import { LoadCharts, store, Toast } from '../store'
 
-const chartId = ref('top-trending')
+const chartId = ref(store.route.query === 'favorites' ? 'favorites' : 'top-trending')
 const query = ref('')
 const results = ref<GameCard[] | null>(null)
 const searching = ref(false)
 const loadError = ref('')
 
+const favorites = computed<GameCard[]>(() =>
+    store.favorites.map((f) => ({
+        universeId: f.universeId,
+        rootPlaceId: f.rootPlaceId,
+        name: f.name,
+        icon: f.icon,
+        playerCount: -1,
+        upVotes: 0,
+        downVotes: 0,
+    })),
+)
+const onFavorites = computed(() => chartId.value === 'favorites')
 const chart = computed(() => store.charts?.find((c) => c.id === chartId.value) ?? store.charts?.[0])
-const games = computed(() => results.value ?? chart.value?.games ?? [])
-const heading = computed(() => (results.value ? `Results for “${query.value.trim()}”` : (chart.value?.name ?? 'Games')))
+const games = computed(() => results.value ?? (onFavorites.value ? favorites.value : (chart.value?.games ?? [])))
+const heading = computed(() =>
+    results.value ? `Results for “${query.value.trim()}”` : onFavorites.value ? 'Your favorites' : (chart.value?.name ?? 'Games'),
+)
 
 let debounce = 0
 function OnType() {
@@ -66,6 +80,7 @@ onMounted(() => Load())
                 :disabled="!!results"
                 @change="results = null"
             >
+                <option value="favorites">Favorites ({{ store.favorites.length }})</option>
                 <option v-for="c in store.charts ?? []" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
             <span class="divider" aria-hidden="true"></span>
@@ -96,9 +111,12 @@ onMounted(() => Load())
 
         <p v-if="loadError" class="err">{{ loadError }}</p>
         <p v-else-if="results && !results.length" class="muted">No games matched. Try a shorter name.</p>
+        <p v-else-if="onFavorites && !results && !favorites.length" class="muted">
+            No favorites yet. Use the star on any game to keep it here.
+        </p>
 
         <div class="tiles">
-            <template v-if="store.charts || results">
+            <template v-if="store.charts || results || onFavorites">
                 <GameTile v-for="g in games" :key="g.universeId" :game="g" />
             </template>
             <template v-else>

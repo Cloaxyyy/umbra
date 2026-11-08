@@ -11,9 +11,44 @@ import { api, type FriendGame, type GameCard, type Progress, type Status } from 
 import GameTile from '../components/GameTile.vue'
 import Icon from '../components/Icon.vue'
 import { Ago, Compact, Dur } from '../format'
-import { ActiveAccount, Go, LaunchMany, LoadCharts, QuickPlay, RefreshRunning, Toast } from '../store'
+import { ActiveAccount, AddAccount, Go, LaunchMany, LoadCharts, QuickPlay, RefreshRunning, store, Toast } from '../store'
 
 const status = ref<Status | null>(null)
+const SETUP_KEY = 'umbra.setupHidden'
+function ReadHidden() {
+    try {
+        return localStorage.getItem(SETUP_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+const setupHidden = ref(ReadHidden())
+const steps = computed(() => [
+    { id: 'install', label: 'Install Roblox into Umbra', done: !!status.value?.installed, action: 'Install' },
+    { id: 'account', label: 'Add your Roblox account', done: store.accounts.length > 0, action: 'Add account' },
+    { id: 'web', label: 'Open roblox.com Play buttons in Umbra', done: !!status.value?.isProtocolHandler, action: 'Turn on' },
+    { id: 'fav', label: 'Star a game you play often', done: store.favorites.length > 0, action: 'Find games' },
+])
+const stepsDone = computed(() => steps.value.filter((x) => x.done).length)
+const showSetup = computed(() => !setupHidden.value && !!status.value && stepsDone.value < steps.value.length)
+function HideSetup() {
+    setupHidden.value = true
+    try {
+        localStorage.setItem(SETUP_KEY, '1')
+    } catch {}
+}
+async function DoStep(id: string) {
+    if (id === 'install') return Install()
+    if (id === 'account') return AddAccount()
+    if (id === 'fav') return Go({ view: 'discover' })
+    try {
+        await api.registerProtocol()
+        status.value = await api.status()
+        Toast('good', 'Play buttons on roblox.com now open Umbra.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
 const progress = ref<Progress | null>(null)
 const busy = ref(false)
 const trending = ref<GameCard[]>([])
@@ -155,6 +190,28 @@ onUnmounted(() => unlisten.forEach((u) => u()))
 
         <div class="grid">
             <div class="main-col">
+                <section v-if="showSetup" class="card setup">
+                    <div class="setup-head">
+                        <div>
+                            <h2>Get set up</h2>
+                            <p class="faint small">{{ stepsDone }} of {{ steps.length }} done</p>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" @click="HideSetup">Hide</button>
+                    </div>
+                    <div class="setup-bar" role="progressbar" :aria-valuenow="stepsDone" aria-valuemin="0" :aria-valuemax="steps.length">
+                        <div :style="{ width: (stepsDone / steps.length) * 100 + '%' }"></div>
+                    </div>
+                    <ul class="steps">
+                        <li v-for="st in steps" :key="st.id" :class="{ done: st.done }">
+                            <span class="check-dot"><Icon v-if="st.done" name="check" :size="12" /></span>
+                            <span class="step-label">{{ st.label }}</span>
+                            <button v-if="!st.done" class="btn btn-sm" :disabled="busy && st.id === 'install'" @click="DoStep(st.id)">
+                                {{ st.action }}
+                            </button>
+                        </li>
+                    </ul>
+                </section>
+
                 <section class="hero">
                     <img src="/eclipse.png" alt="" class="eclipse" aria-hidden="true" />
                     <div class="hero-body">
@@ -198,6 +255,31 @@ onUnmounted(() => unlisten.forEach((u) => u()))
                             <div class="bar" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
                                 <div class="fill" :style="{ width: percent + '%' }"></div>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section v-if="store.favorites.length" class="stack" style="gap: 12px">
+                    <div class="sec-head">
+                        <h2><Icon name="star" :size="16" />Favorites</h2>
+                        <button class="link" @click="Go({ view: 'discover', query: 'favorites' })">
+                            See all <Icon name="chevronRight" :size="13" />
+                        </button>
+                    </div>
+                    <div class="fv-list">
+                        <div v-for="f in store.favorites.slice(0, 8)" :key="f.universeId" class="fv">
+                            <button class="fv-open" @click="Go({ view: 'game', universeId: f.universeId, name: f.name })">
+                                <img v-if="f.icon" :src="f.icon" alt="" /><span v-else class="fv-img"></span>
+                                <span class="fv-name">{{ f.name }}</span>
+                            </button>
+                            <button
+                                class="fv-play"
+                                :aria-label="'Play ' + f.name"
+                                title="Play with the active account"
+                                @click="QuickPlay(f.rootPlaceId)"
+                            >
+                                <Icon name="play" :size="13" />
+                            </button>
                         </div>
                     </div>
                 </section>
@@ -330,6 +412,122 @@ onUnmounted(() => unlisten.forEach((u) => u()))
 </template>
 
 <style scoped>
+.small {
+    font-size: 12px;
+}
+.setup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.setup-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+.setup-bar {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--surface-3);
+    overflow: hidden;
+}
+.setup-bar div {
+    height: 100%;
+    background: var(--accent);
+}
+.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 8px;
+}
+.steps li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    font-size: 13px;
+    font-weight: 600;
+}
+.steps li.done {
+    color: var(--fg-3);
+}
+.step-label {
+    flex: 1;
+    min-width: 0;
+}
+.check-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line-strong);
+    display: grid;
+    place-items: center;
+    flex: none;
+}
+.done .check-dot {
+    background: var(--good);
+    border-color: transparent;
+    color: var(--select-fg);
+}
+.fv-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+.fv {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    min-width: 0;
+}
+.fv:hover {
+    border-color: var(--line-strong);
+}
+.fv-open {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+.fv-open img,
+.fv-img {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: var(--surface-3);
+    flex: none;
+}
+.fv-name {
+    font-size: 13px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fv-play {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: var(--fg-3);
+    flex: none;
+}
+.fv-play:hover {
+    background: var(--surface-3);
+    color: var(--fg);
+}
 .home {
     display: flex;
     flex-direction: column;
@@ -388,18 +586,8 @@ onUnmounted(() => unlisten.forEach((u) => u()))
     min-height: 280px;
     display: flex;
     align-items: center;
-    background: radial-gradient(60% 90% at 85% 50%, rgba(98, 140, 255, 0.18), transparent 70%),
-        radial-gradient(40% 70% at 70% 30%, rgba(149, 128, 255, 0.22), transparent 70%), linear-gradient(180deg, #110f1c, #0b0a12);
+    background: var(--surface);
     border: 1px solid var(--line);
-}
-.hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(1px 1px at 12% 22%, #fff8, transparent), radial-gradient(1px 1px at 32% 78%, #fff6, transparent),
-        radial-gradient(1px 1px at 55% 15%, #fff5, transparent), radial-gradient(1.5px 1.5px at 48% 60%, #fff7, transparent),
-        radial-gradient(1px 1px at 22% 50%, #fff4, transparent), radial-gradient(1px 1px at 62% 88%, #fff5, transparent);
-    pointer-events: none;
 }
 .eclipse {
     position: absolute;
@@ -408,17 +596,7 @@ onUnmounted(() => unlisten.forEach((u) => u()))
     width: 360px;
     height: 360px;
     transform: translateY(-50%);
-    filter: drop-shadow(0 0 40px rgba(98, 160, 255, 0.35));
-    animation: drift 18s ease-in-out infinite alternate;
     pointer-events: none;
-}
-@keyframes drift {
-    from {
-        transform: translateY(-50%) rotate(-6deg);
-    }
-    to {
-        transform: translateY(-50%) rotate(6deg);
-    }
 }
 .hero-body {
     position: relative;
@@ -446,7 +624,7 @@ onUnmounted(() => unlisten.forEach((u) => u()))
 }
 .fill {
     height: 100%;
-    background: var(--grad);
+    background: var(--accent);
     border-radius: 999px;
     transition: width 0.2s linear;
 }
@@ -614,7 +792,6 @@ onUnmounted(() => unlisten.forEach((u) => u()))
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: #d8d0ff;
 }
 .feat-name {

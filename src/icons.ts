@@ -85,6 +85,15 @@ export const ICONS = {
     external: ['M15 3h6v6', 'M10 14 21 3', 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'],
     check: ['M20 6 9 17l-5-5'],
     swap: ['M8 3 4 7l4 4', 'M4 7h16', 'm16 21 4-4-4-4', 'M20 17H4'],
+    idcard: [
+        'M16 10h2',
+        'M16 14h2',
+        'M6.17 15a3 3 0 0 1 5.66 0',
+        'M11 11a2 2 0 1 1-4 0 2 2 0 0 1 4 0z',
+        'M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
+    ],
+    calendar: ['M8 2v4', 'M16 2v4', 'M4 6h16a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z', 'M3 10h18'],
+    enter: ['M9 10 4 15l5 5', 'M20 4v7a4 4 0 0 1-4 4H4'],
 } as const
 
 export type IconName = keyof typeof ICONS

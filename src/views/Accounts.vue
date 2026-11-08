@@ -114,7 +114,6 @@ onUnmounted(() => clearInterval(timer))
     <div class="stack" style="gap: 22px">
         <header class="row between" style="align-items: flex-end; flex-wrap: wrap">
             <div>
-                <p class="eyebrow">Accounts</p>
                 <h1>Your main and your alts. At the same time.</h1>
             </div>
             <button class="btn btn-primary" :disabled="store.adding" @click="Add">
@@ -170,8 +169,10 @@ onUnmounted(() => clearInterval(timer))
                     <button class="btn btn-join btn-sm" @click="OpenApp(a)"><Icon name="play" :size="12" />Open Roblox</button>
                     <button v-if="a.userId !== active?.userId" class="btn btn-sm" @click="store.activeId = a.userId">Make active</button>
                     <template v-if="confirmRemove === a.userId">
-                        <button class="btn btn-danger btn-sm" @click="Remove(a.userId)">Remove</button>
-                        <button class="btn btn-ghost btn-sm" @click="confirmRemove = null">Keep</button>
+                        <span class="confirm">
+                            <button class="btn btn-danger btn-sm" @click="confirmRemove = null">Cancel</button>
+                            <button class="btn btn-sm" @click="Remove(a.userId)">Remove</button>
+                        </span>
                     </template>
                     <button v-else class="btn btn-ghost btn-sm" @click="confirmRemove = a.userId">Remove…</button>
                 </div>
@@ -255,8 +256,7 @@ onUnmounted(() => clearInterval(timer))
     transition: border-color 0.15s;
 }
 .acct.picked {
-    border-color: var(--accent-line);
-    box-shadow: 0 0 0 1px var(--accent-line) inset;
+    border-color: rgba(255, 255, 255, 0.5);
 }
 .pick {
     position: absolute;
@@ -297,9 +297,9 @@ onUnmounted(() => clearInterval(timer))
     white-space: nowrap;
 }
 .active-pill {
-    color: #c4b8ff;
-    background: var(--accent-soft);
-    border-color: var(--accent-line);
+    color: #0b0a12;
+    background: #f4f3fa;
+    border-color: transparent;
 }
 .empty {
     display: flex;
@@ -326,8 +326,9 @@ onUnmounted(() => clearInterval(timer))
     font-size: 13px;
 }
 .seg button[aria-selected='true'] {
-    background: var(--surface-3);
-    color: var(--fg);
+    background: #f4f3fa;
+    border-color: transparent;
+    color: #0b0a12;
 }
 .fields {
     display: grid;

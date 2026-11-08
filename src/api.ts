@@ -17,6 +17,7 @@ export interface Settings {
     discordJoinButton: boolean
     closeToTray: boolean
     autoCheckUpdates: boolean
+    accent: string
 }
 
 export interface GameSession {
@@ -304,6 +305,57 @@ export interface TradeDetail {
 }
 export type TradeKind = 'inbound' | 'outbound' | 'completed' | 'inactive'
 
+export interface Player {
+    userId: number
+    name: string
+    displayName: string
+    verified: boolean
+    avatar: string | null
+}
+export interface Friend {
+    userId: number
+    name: string
+    displayName: string
+    avatar: string | null
+    status: 0 | 1 | 2 | 3
+    lastLocation: string | null
+    placeId: number | null
+    gameId: string | null
+    universeId: number | null
+}
+export interface CreatedGame {
+    universeId: number
+    rootPlaceId: number
+    name: string
+    visits: number
+    icon: string | null
+}
+export interface PlayerProfile {
+    userId: number
+    name: string
+    displayName: string
+    description: string
+    created: string
+    verified: boolean
+    banned: boolean
+    friends: number
+    followers: number
+    following: number
+    avatar: string | null
+    status: 0 | 1 | 2 | 3 | null
+    lastLocation: string | null
+    placeId: number | null
+    gameId: string | null
+    games: CreatedGame[]
+}
+export interface Favorite {
+    universeId: number
+    rootPlaceId: number
+    name: string
+    icon: string | null
+    added: number
+}
+
 export const api = {
     status: () => invoke<Status>('get_status'),
     install: () => invoke<string>('install'),
@@ -358,6 +410,11 @@ export const api = {
     game: (universeId: number) => invoke<GameDetail>('get_game', { universeId }),
     servers: (placeId: number, mostPlayers: boolean, excludeFull: boolean, cursor?: string | null) =>
         invoke<ServerPage>('get_servers', { placeId, mostPlayers, excludeFull, cursor }),
+    friends: (userId: number) => invoke<Friend[]>('get_friends', { userId }),
+    searchPlayers: (keyword: string) => invoke<Player[]>('search_players', { keyword }),
+    player: (userId: number, asUser?: number | null) => invoke<PlayerProfile>('get_player', { userId, asUser }),
+    favorites: () => invoke<Favorite[]>('list_favorites'),
+    toggleFavorite: (favorite: Favorite) => invoke<boolean>('toggle_favorite', { favorite }),
     friendsPlaying: (userId: number) => invoke<FriendGame[]>('get_friends_playing', { userId }),
     forYou: (userId: number | null) => invoke<ForYou | null>('get_for_you', { userId }),
     onProgress: (cb: (p: Progress) => void) => listen<Progress>('install-progress', (e) => cb(e.payload)),

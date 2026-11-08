@@ -6,11 +6,13 @@ mod deploy;
 mod discord;
 mod discover;
 mod dpapi;
+mod favorites;
 mod launch;
 mod logwatch;
 mod mods;
 mod paths;
 mod personal;
+mod players;
 mod profiles;
 mod roblox;
 mod settings;
@@ -494,6 +496,34 @@ async fn get_friends_playing(user_id: u64) -> Result<Vec<discover::FriendGame>, 
 }
 
 #[tauri::command]
+async fn get_friends(user_id: u64) -> Result<Vec<players::Friend>, String> {
+    players::friends(user_id, &accounts::cookie(user_id)?).await
+}
+
+#[tauri::command]
+async fn search_players(keyword: String) -> Result<Vec<players::Player>, String> {
+    players::search(&keyword).await
+}
+
+#[tauri::command]
+async fn get_player(user_id: u64, as_user: Option<u64>) -> Result<players::Profile, String> {
+    let cookie = as_user
+        .and_then(|u| accounts::cookie(u).ok())
+        .or_else(accounts::any_cookie);
+    players::profile(user_id, cookie).await
+}
+
+#[tauri::command]
+fn list_favorites() -> Vec<favorites::Favorite> {
+    favorites::list()
+}
+
+#[tauri::command]
+fn toggle_favorite(favorite: favorites::Favorite) -> Result<bool, String> {
+    favorites::toggle(favorite)
+}
+
+#[tauri::command]
 async fn get_collection(user_id: u64) -> Result<trades::Collection, String> {
     trades::collection(user_id, accounts::cookie(user_id).ok().as_deref()).await
 }
@@ -661,6 +691,11 @@ pub fn run() {
             get_game,
             get_servers,
             get_friends_playing,
+            get_friends,
+            search_players,
+            get_player,
+            list_favorites,
+            toggle_favorite,
             get_for_you,
             get_collection,
             get_trades,

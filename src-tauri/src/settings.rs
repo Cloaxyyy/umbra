@@ -19,6 +19,7 @@ pub struct Settings {
     pub close_to_tray: bool,
 
     pub auto_check_updates: bool,
+    pub accent: String,
 }
 
 impl Default for Settings {
@@ -33,6 +34,7 @@ impl Default for Settings {
             discord_join_button: false,
             close_to_tray: false,
             auto_check_updates: true,
+            accent: "#9580ff".into(),
         }
     }
 }
