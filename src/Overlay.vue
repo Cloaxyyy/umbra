@@ -263,6 +263,14 @@ onMounted(async () => {
     ticker = window.setInterval(() => (now.value = Date.now()), 1000)
     unlisten = await listen<number | null>('overlay-open', async (e) => {
         confirmClose.value = false
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+            document.querySelector('.ov')?.animate(
+                [
+                    { opacity: 0, transform: 'translateX(18px)' },
+                    { opacity: 1, transform: 'none' },
+                ],
+                { duration: 240, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+            )
         if (e.payload) Pick(e.payload)
         await Promise.all([Refresh(), LoadSettings()])
         if (tab.value === 'friends' || extras.value.friendsHere) LoadFriends()

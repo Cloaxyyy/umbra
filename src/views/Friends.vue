@@ -412,7 +412,7 @@ onMounted(() => {
 }
 .row-item.on .faint,
 .row-item.on .playing {
-    color: rgba(11, 10, 18, 0.65);
+    color: rgba(0, 0, 0, 0.65);
 }
 .av-wrap {
     position: relative;

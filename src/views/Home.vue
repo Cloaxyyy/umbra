@@ -787,7 +787,7 @@ onUnmounted(() => unlisten.forEach((u) => u()))
     gap: 5px;
     padding: 3px 9px;
     border-radius: 999px;
-    background: rgba(8, 7, 13, 0.75);
+    background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(6px);
     font-size: 11px;
     font-weight: 800;

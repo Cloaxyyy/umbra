@@ -40,7 +40,7 @@ impl Default for Settings {
             discord_join_button: false,
             close_to_tray: false,
             auto_check_updates: true,
-            accent: "#9580ff".into(),
+            accent: "#e8e8e8".into(),
             overlay_enabled: true,
             overlay_hotkey: "Ctrl+Shift+U".into(),
             friend_alerts: true,

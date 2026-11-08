@@ -689,7 +689,7 @@ onUnmounted(() => {
     place-items: center;
     font-weight: 800;
     font-size: 16px;
-    color: #0b0a12;
+    color: #000000;
     flex: none;
 }
 .badge.lg {
@@ -852,9 +852,9 @@ onUnmounted(() => {
     font-size: 13px;
 }
 .seg button[aria-pressed='true'] {
-    background: #f4f3fa;
+    background: #ffffff;
     border-color: transparent;
-    color: #0b0a12;
+    color: #000000;
 }
 .stats {
     display: grid;

@@ -417,7 +417,7 @@ onMounted(async () => {
 .shade {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(8, 7, 13, 0.1) 30%, rgba(18, 16, 28, 0.96) 100%);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 30%, rgba(16, 16, 17, 0.96) 100%);
 }
 .dots {
     position: absolute;
@@ -522,9 +522,9 @@ onMounted(async () => {
     background: var(--surface-3);
 }
 .chip[aria-pressed='true'] {
-    background: #f4f3fa;
+    background: #ffffff;
     border-color: transparent;
-    color: #0b0a12;
+    color: #000000;
 }
 .link.inline {
     font-size: 12px;

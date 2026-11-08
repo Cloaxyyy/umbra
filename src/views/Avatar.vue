@@ -414,9 +414,9 @@ onMounted(async () => {
     font-size: 12px;
 }
 .seg button[aria-pressed='true'] {
-    background: #f4f3fa;
+    background: #ffffff;
     border-color: transparent;
-    color: #0b0a12;
+    color: #000000;
 }
 
 .panel {
@@ -480,9 +480,9 @@ onMounted(async () => {
     color: var(--fg);
 }
 .chip[aria-pressed='true'] {
-    background: #f4f3fa;
+    background: #ffffff;
     border-color: transparent;
-    color: #0b0a12;
+    color: #000000;
 }
 .dotc {
     width: 12px;
@@ -552,7 +552,7 @@ onMounted(async () => {
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: rgba(8, 7, 13, 0.8);
+    background: rgba(0, 0, 0, 0.8);
     color: var(--fg-2);
 }
 .off:hover:not(:disabled) {

@@ -1,20 +1,21 @@
 :root {
-    --bg: #08070d;
-    --bg-2: #0c0b14;
+    --bg: #000000;
+    --bg-2: #070707;
     --surface: rgba(255, 255, 255, 0.03);
     --surface-2: rgba(255, 255, 255, 0.055);
     --surface-3: rgba(255, 255, 255, 0.09);
-    --panel: #15131f;
+    --panel: #0f0f10;
     --line: rgba(255, 255, 255, 0.07);
     --line-strong: rgba(255, 255, 255, 0.13);
-    --select: #f4f3fa;
-    --select-fg: #0b0a12;
-    --fg: #efedf7;
-    --fg-2: #a29db9;
-    --fg-3: #67627e;
-    --accent: #9580ff;
-    --accent-soft: rgba(149, 128, 255, 0.14);
-    --accent-line: rgba(149, 128, 255, 0.4);
+    --select: #ffffff;
+    --select-fg: #000000;
+    --fg: #f0f0f0;
+    --fg-2: #a1a4a5;
+    --fg-3: #6f7275;
+    --accent: #e8e8e8;
+    --accent-soft: rgba(232, 232, 232, 0.12);
+    --accent-line: rgba(232, 232, 232, 0.4);
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
     --corona: #62d4ff;
     --grad: var(--accent);
     --good: #3fe0a0;
@@ -370,13 +371,329 @@ select option {
     background: var(--panel);
     color: var(--fg);
 }
-.page-enter-active,
-.page-leave-active {
-    transition: opacity 0.12s ease;
+.page-enter-active {
+    transition:
+        opacity 0.3s var(--ease-out),
+        transform 0.3s var(--ease-out),
+        filter 0.3s var(--ease-out);
 }
-.page-enter-from,
+.page-leave-active {
+    transition: opacity 0.1s ease;
+}
+.page-enter-from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(3px);
+}
 .page-leave-to {
     opacity: 0;
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+@keyframes pop {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+}
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ) {
+    animation: rise 0.45s var(--ease-out) both;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(2) {
+    animation-delay: 30ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(3) {
+    animation-delay: 60ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(4) {
+    animation-delay: 90ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(5) {
+    animation-delay: 120ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(6) {
+    animation-delay: 150ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(7) {
+    animation-delay: 180ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(8) {
+    animation-delay: 210ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(9) {
+    animation-delay: 240ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(10) {
+    animation-delay: 270ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(11) {
+    animation-delay: 300ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(12) {
+    animation-delay: 330ms;
+}
+.content
+    :is(
+        .tile,
+        .card,
+        .run,
+        .item,
+        .card-item,
+        .row-item,
+        .server,
+        .badge,
+        .passes > li,
+        .fv,
+        .pick,
+        .friend,
+        .mod,
+        .sess,
+        .lim,
+        .trow,
+        .titem
+    ):nth-child(n + 13) {
+    animation-delay: 360ms;
+}
+.btn:active:not(:disabled) {
+    transform: scale(0.97);
 }
 .confirm {
     display: flex;

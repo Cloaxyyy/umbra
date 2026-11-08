@@ -68,7 +68,7 @@ function Star() {
     border-radius: 8px;
     display: grid;
     place-items: center;
-    background: rgba(8, 7, 13, 0.72);
+    background: rgba(0, 0, 0, 0.72);
     color: var(--fg-2);
     opacity: 0;
     transition: opacity 0.12s;

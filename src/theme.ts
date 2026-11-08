@@ -1,5 +1,6 @@
 import type { ProfileTheme } from './api'
 export const ACCENTS = [
+    { name: 'Mono', hex: '#e8e8e8' },
     { name: 'Eclipse', hex: '#9580ff' },
     { name: 'Corona', hex: '#62d4ff' },
     { name: 'Aurora', hex: '#3fe0a0' },

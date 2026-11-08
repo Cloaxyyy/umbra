@@ -207,7 +207,8 @@ onMounted(() => input.value?.focus())
     position: fixed;
     inset: 0;
     z-index: 60;
-    background: rgba(4, 3, 8, 0.6);
+    background: rgba(0, 0, 0, 0.6);
+    animation: fade-in 0.15s ease both;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -223,6 +224,7 @@ onMounted(() => input.value?.focus())
     border: 1px solid var(--line-strong);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
     overflow: hidden;
+    animation: pop 0.22s var(--ease-out) both;
 }
 .bar {
     display: flex;
@@ -284,7 +286,7 @@ kbd {
     color: var(--select-fg);
 }
 .hit.on .faint {
-    color: rgba(11, 10, 18, 0.6);
+    color: rgba(0, 0, 0, 0.6);
 }
 .pic {
     width: 34px;
@@ -300,7 +302,7 @@ kbd {
     color: var(--fg-2);
 }
 .hit.on .ico {
-    background: rgba(11, 10, 18, 0.08);
+    background: rgba(0, 0, 0, 0.08);
     color: var(--select-fg);
 }
 .txt {

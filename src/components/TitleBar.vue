@@ -234,8 +234,8 @@ button.crumb:hover {
     height: 28px;
     padding: 0 12px;
     border-radius: 999px;
-    background: #f4f3fa;
-    color: #0b0a12;
+    background: #ffffff;
+    color: #000000;
     font-size: 12px;
     font-weight: 800;
 }

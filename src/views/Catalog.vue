@@ -310,9 +310,9 @@ onMounted(async () => {
     color: var(--fg);
 }
 .chip[aria-pressed='true'] {
-    background: #f4f3fa;
+    background: #ffffff;
     border-color: transparent;
-    color: #0b0a12;
+    color: #000000;
 }
 .err {
     color: var(--bad);
@@ -363,7 +363,7 @@ onMounted(async () => {
     border-radius: 999px;
     font-size: 10px;
     font-weight: 800;
-    background: rgba(8, 7, 13, 0.75);
+    background: rgba(0, 0, 0, 0.75);
     color: var(--fg-2);
 }
 .tag.limited {
@@ -427,7 +427,7 @@ onMounted(async () => {
 .overlay {
     position: fixed;
     inset: 46px 0 0 64px;
-    background: rgba(4, 3, 8, 0.66);
+    background: rgba(0, 0, 0, 0.66);
     backdrop-filter: blur(4px);
     display: grid;
     place-items: center;

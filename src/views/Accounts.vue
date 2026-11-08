@@ -445,8 +445,8 @@ onUnmounted(() => clearInterval(timer))
     white-space: nowrap;
 }
 .active-pill {
-    color: #0b0a12;
-    background: #f4f3fa;
+    color: #000000;
+    background: #ffffff;
     border-color: transparent;
 }
 .empty {
@@ -474,9 +474,9 @@ onUnmounted(() => clearInterval(timer))
     font-size: 13px;
 }
 .seg button[aria-selected='true'] {
-    background: #f4f3fa;
+    background: #ffffff;
     border-color: transparent;
-    color: #0b0a12;
+    color: #000000;
 }
 .fields {
     display: grid;

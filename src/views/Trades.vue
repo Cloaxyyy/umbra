@@ -284,8 +284,8 @@ onMounted(Load)
     font-size: 13px;
 }
 .seg button[aria-selected='true'] {
-    background: #f4f3fa;
-    color: #0b0a12;
+    background: #ffffff;
+    color: #000000;
 }
 .totals {
     display: flex;
