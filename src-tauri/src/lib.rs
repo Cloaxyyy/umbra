@@ -10,6 +10,7 @@ mod favorites;
 mod launch;
 mod logwatch;
 mod mods;
+mod overlay;
 mod paths;
 mod personal;
 mod players;
@@ -284,6 +285,123 @@ async fn avatar_set_type(user_id: u64, avatar_type: String) -> Result<(), String
     avatar::set_type(&c, &avatar_type).await?;
     avatar::redraw(&c).await;
     Ok(())
+}
+
+#[tauri::command]
+fn overlay_target() -> Option<u32> {
+    overlay::target()
+}
+
+#[tauri::command]
+fn overlay_pick(pid: u32) {
+    overlay::retarget(pid)
+}
+
+#[tauri::command]
+fn overlay_hide(app: AppHandle) {
+    overlay::hide(&app, true)
+}
+
+#[tauri::command]
+fn set_client_priority(
+    running: State<'_, launch::Running>,
+    pid: u32,
+    level: String,
+) -> Result<(), String> {
+    running.set_priority(pid, &level)
+}
+
+fn register_hotkey(app: &AppHandle, s: &settings::Settings) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+    let gs = app.global_shortcut();
+    let _ = gs.unregister_all();
+    if !s.overlay_enabled {
+        return Ok(());
+    }
+    let shortcut: Shortcut = s
+        .overlay_hotkey
+        .parse()
+        .map_err(|_| format!("Umbra can't use \"{}\" as a hotkey.", s.overlay_hotkey))?;
+    gs.register(shortcut).map_err(|e| {
+        format!(
+            "Couldn't use {} as the overlay hotkey. Another app may already use it. ({e})",
+            s.overlay_hotkey
+        )
+    })
+}
+
+#[tauri::command]
+fn set_overlay_hotkey(app: AppHandle, hotkey: String, enabled: bool) -> Result<(), String> {
+    let mut s = settings::load();
+    let old = (s.overlay_hotkey.clone(), s.overlay_enabled);
+    s.overlay_hotkey = hotkey.trim().to_string();
+    s.overlay_enabled = enabled;
+    if let Err(e) = register_hotkey(&app, &s) {
+        s.overlay_hotkey = old.0;
+        s.overlay_enabled = old.1;
+        let _ = register_hotkey(&app, &s);
+        return Err(e);
+    }
+    settings::save(&s)
+}
+
+#[tauri::command]
+async fn move_client(
+    app: AppHandle,
+    running: State<'_, launch::Running>,
+    watcher: State<'_, logwatch::Watcher>,
+    pid: u32,
+    mode: String,
+    place_id: Option<u64>,
+    job_id: Option<String>,
+) -> Result<u32, String> {
+    let (user_id, profile_id) = running.owner(pid).ok_or("That client already closed.")?;
+    let user_id = user_id.ok_or(
+        "This client was started without a saved account, so Umbra can't move it. Launch it from an account instead.",
+    )?;
+    let session = watcher.sessions().get(&user_id).cloned();
+    let (place, job) = match mode.as_str() {
+        "rejoin" => {
+            let s = session.ok_or("This client isn't in a game yet.")?;
+            (s.place_id, s.job_id)
+        }
+        "hop" => {
+            let s = session.ok_or("This client isn't in a game yet.")?;
+            let page = discover::servers(s.place_id, true, true, None).await?;
+            let open: Vec<_> = page
+                .servers
+                .iter()
+                .filter(|x| Some(&x.id) != s.job_id.as_ref() && x.playing < x.max_players)
+                .take(10)
+                .collect();
+            if open.is_empty() {
+                return Err("There are no other open servers right now.".into());
+            }
+            let n = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos() as usize;
+            (s.place_id, Some(open[n % open.len()].id.clone()))
+        }
+        "to" => (place_id.ok_or("Pick a game to move to.")?, job_id),
+        _ => return Err("Unknown move.".into()),
+    };
+    running.kill_and_wait(pid)?;
+    watcher.forget(user_id);
+    tokio::time::sleep(Duration::from_millis(1200)).await;
+    let new = launch_account(
+        app,
+        running,
+        user_id,
+        roblox::Target::Place {
+            place: place.to_string(),
+            job_id: job,
+        },
+        Some(profile_id),
+    )
+    .await?;
+    overlay::retarget(new);
+    Ok(new)
 }
 
 #[tauri::command]
@@ -615,7 +733,21 @@ pub fn run() {
             discord::Discord::default(),
             None,
         ))))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        overlay::toggle(app, &app.state::<launch::Running>());
+                    }
+                })
+                .build(),
+        )
         .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Focused(false) = event {
+                if window.label() == "overlay" {
+                    overlay::hide(window.app_handle(), false);
+                }
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" && settings::load().close_to_tray {
                     api.prevent_close();
@@ -656,6 +788,10 @@ pub fn run() {
             }
             let handle = app.handle().clone();
             std::thread::spawn(move || background_loop(handle));
+            let _ = overlay::create(app.handle());
+            if let Err(e) = register_hotkey(app.handle(), &settings::load()) {
+                let _ = app.handle().emit("launch-error", e);
+            }
 
             if let Some(uri) = uri {
                 let handle = app.handle().clone();
@@ -712,6 +848,12 @@ pub fn run() {
             delete_mod,
             import_font,
             get_autostart,
+            overlay_target,
+            overlay_pick,
+            overlay_hide,
+            set_client_priority,
+            set_overlay_hotkey,
+            move_client,
             set_autostart,
             discord_status,
             catalog_categories,

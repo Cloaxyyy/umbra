@@ -20,6 +20,8 @@ pub struct Settings {
 
     pub auto_check_updates: bool,
     pub accent: String,
+    pub overlay_enabled: bool,
+    pub overlay_hotkey: String,
 }
 
 impl Default for Settings {
@@ -35,6 +37,8 @@ impl Default for Settings {
             close_to_tray: false,
             auto_check_updates: true,
             accent: "#9580ff".into(),
+            overlay_enabled: true,
+            overlay_hotkey: "Ctrl+Shift+U".into(),
         }
     }
 }

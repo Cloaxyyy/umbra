@@ -89,6 +89,19 @@ async function Join() {
     joining.value = false
 }
 
+const moving = ref<number | null>(null)
+async function Move(pid: number, mode: 'rejoin' | 'hop') {
+    moving.value = pid
+    try {
+        await api.moveClient(pid, mode)
+        Toast('good', mode === 'rejoin' ? 'Rejoining the same server.' : 'Hopping to another server.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+    moving.value = null
+    RefreshRunning()
+}
+
 async function Close(pid: number) {
     try {
         await api.closeRunning(pid)
@@ -236,7 +249,27 @@ onUnmounted(() => clearInterval(timer))
                     <span class="faint">· {{ ProfileName(r.profileId) ?? 'Instance' }}</span>
                     <span class="faint mono">PID {{ r.pid }}</span>
                 </div>
-                <button class="btn btn-ghost btn-sm" @click="Close(r.pid)">Close</button>
+                <div class="row" style="gap: 6px">
+                    <template v-if="r.game && r.userId">
+                        <button
+                            class="btn btn-sm"
+                            :disabled="moving === r.pid"
+                            title="Rejoin the same server"
+                            @click="Move(r.pid, 'rejoin')"
+                        >
+                            <Icon name="refresh" :size="12" />Rejoin
+                        </button>
+                        <button
+                            class="btn btn-sm"
+                            :disabled="moving === r.pid"
+                            title="Join a different server of this game"
+                            @click="Move(r.pid, 'hop')"
+                        >
+                            <Icon name="swap" :size="12" />Hop
+                        </button>
+                    </template>
+                    <button class="btn btn-ghost btn-sm" @click="Close(r.pid)">Close</button>
+                </div>
             </div>
         </section>
     </div>

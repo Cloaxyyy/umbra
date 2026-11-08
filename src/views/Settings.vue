@@ -27,6 +27,51 @@ async function Save() {
         Toast('bad', String(e))
     }
 }
+const recording = ref(false)
+function KeyName(e: KeyboardEvent) {
+    const code = e.code
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3)
+    if (/^Digit[0-9]$/.test(code)) return code.slice(5)
+    if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) return code
+    if (['Backquote', 'Space', 'Insert', 'Home', 'End', 'PageUp', 'PageDown', 'Pause'].includes(code)) return code
+    return null
+}
+async function SaveHotkey(hotkey: string, enabled: boolean) {
+    try {
+        await api.setOverlayHotkey(hotkey, enabled)
+        s.value!.overlayHotkey = hotkey
+        s.value!.overlayEnabled = enabled
+        Toast('good', enabled ? `Press ${hotkey} in game to open the overlay.` : 'Overlay hotkey turned off.')
+    } catch (e) {
+        Toast('bad', String(e))
+    }
+}
+function OnRecord(e: KeyboardEvent) {
+    e.preventDefault()
+    if (e.key === 'Escape') {
+        StopRecording()
+        return
+    }
+    const key = KeyName(e)
+    if (!key) return
+    const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift'].filter(Boolean) as string[]
+    if (!mods.length && !/^F\d+$/.test(key)) {
+        Toast('bad', 'Add Ctrl, Alt or Shift so the hotkey does not fire while you type in game.')
+        return
+    }
+    StopRecording()
+    SaveHotkey([...mods, key].join('+'), true)
+}
+function StartRecording() {
+    recording.value = true
+    window.addEventListener('keydown', OnRecord, true)
+}
+function StopRecording() {
+    recording.value = false
+    window.removeEventListener('keydown', OnRecord, true)
+}
+onUnmounted(StopRecording)
+
 function SetAccent(hex: string) {
     s.value!.accent = hex
     ApplyAccent(hex)
@@ -95,6 +140,40 @@ onUnmounted(() => clearInterval(timer))
                             :style="{ background: a.hex }"
                             @click="SetAccent(a.hex)"
                         ></button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card stack" style="gap: 18px">
+                <h2 class="group">In-game overlay</h2>
+                <div class="setting">
+                    <div>
+                        <h3>Overlay hotkey</h3>
+                        <p class="muted">
+                            Opens a panel on top of Roblox to rejoin, server hop, bring alts, change priority and tune graphics without
+                            tabbing out. It is a separate Umbra window, so it never touches the game itself.
+                        </p>
+                    </div>
+                    <button
+                        class="switch"
+                        role="switch"
+                        :aria-checked="s.overlayEnabled"
+                        aria-label="Overlay hotkey"
+                        @click="SaveHotkey(s.overlayHotkey, !s.overlayEnabled)"
+                    ></button>
+                </div>
+                <div v-if="s.overlayEnabled" class="setting">
+                    <div>
+                        <h3>Hotkey</h3>
+                        <p class="muted">
+                            Works while Roblox is in front. Roblox must be windowed or borderless fullscreen, which is its default.
+                        </p>
+                    </div>
+                    <div class="row" style="gap: 8px">
+                        <kbd class="hk">{{ recording ? 'Press keys…' : s.overlayHotkey }}</kbd>
+                        <button class="btn btn-sm" @click="recording ? StopRecording() : StartRecording()">
+                            {{ recording ? 'Cancel' : 'Change' }}
+                        </button>
                     </div>
                 </div>
             </section>
@@ -305,6 +384,16 @@ onUnmounted(() => clearInterval(timer))
 </template>
 
 <style scoped>
+.hk {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-2);
+    min-width: 120px;
+    text-align: center;
+}
 .accents {
     display: flex;
     gap: 8px;

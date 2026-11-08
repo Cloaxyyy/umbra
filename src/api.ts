@@ -18,6 +18,8 @@ export interface Settings {
     closeToTray: boolean
     autoCheckUpdates: boolean
     accent: string
+    overlayEnabled: boolean
+    overlayHotkey: string
 }
 
 export interface GameSession {
@@ -59,6 +61,7 @@ export interface Instance {
     label: string
     profileId: string
     secs: number
+    priority: 'normal' | 'low' | 'idle'
     game: GameSession | null
 }
 export interface Exited {
@@ -414,6 +417,13 @@ export const api = {
     searchPlayers: (keyword: string) => invoke<Player[]>('search_players', { keyword }),
     player: (userId: number, asUser?: number | null) => invoke<PlayerProfile>('get_player', { userId, asUser }),
     favorites: () => invoke<Favorite[]>('list_favorites'),
+    overlayTarget: () => invoke<number | null>('overlay_target'),
+    overlayPick: (pid: number) => invoke<void>('overlay_pick', { pid }),
+    overlayHide: () => invoke<void>('overlay_hide'),
+    setClientPriority: (pid: number, level: 'normal' | 'low' | 'idle') => invoke<void>('set_client_priority', { pid, level }),
+    setOverlayHotkey: (hotkey: string, enabled: boolean) => invoke<void>('set_overlay_hotkey', { hotkey, enabled }),
+    moveClient: (pid: number, mode: 'rejoin' | 'hop' | 'to', placeId?: number | null, jobId?: string | null) =>
+        invoke<number>('move_client', { pid, mode, placeId, jobId }),
     toggleFavorite: (favorite: Favorite) => invoke<boolean>('toggle_favorite', { favorite }),
     friendsPlaying: (userId: number) => invoke<FriendGame[]>('get_friends_playing', { userId }),
     forYou: (userId: number | null) => invoke<ForYou | null>('get_for_you', { userId }),

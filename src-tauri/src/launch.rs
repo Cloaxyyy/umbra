@@ -33,6 +33,7 @@ struct Entry {
     profile_id: String,
     started: Instant,
     killed: bool,
+    priority: String,
 }
 
 #[derive(Default)]
@@ -46,7 +47,7 @@ pub struct Instance {
     pub label: String,
     pub profile_id: String,
     pub secs: u64,
-
+    pub priority: String,
     pub game: Option<super::logwatch::Session>,
 }
 
@@ -78,8 +79,55 @@ impl Running {
             profile_id,
             started: Instant::now(),
             killed: false,
+            priority: "normal".into(),
         });
         pid
+    }
+
+    pub fn owner(&self, pid: u32) -> Option<(Option<u64>, String)> {
+        self.0
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|e| e.child.id() == pid)
+            .map(|e| (e.user_id, e.profile_id.clone()))
+    }
+
+    pub fn set_priority(&self, pid: u32, level: &str) -> Result<(), String> {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::System::Threading::{
+            BELOW_NORMAL_PRIORITY_CLASS, IDLE_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS,
+            SetPriorityClass,
+        };
+        let class = match level {
+            "normal" => NORMAL_PRIORITY_CLASS,
+            "low" => BELOW_NORMAL_PRIORITY_CLASS,
+            "idle" => IDLE_PRIORITY_CLASS,
+            _ => return Err("Priority must be normal, low or idle.".into()),
+        };
+        let mut v = self.0.lock().unwrap();
+        let e = v
+            .iter_mut()
+            .find(|e| e.child.id() == pid)
+            .ok_or("That client already closed.")?;
+        let ok = unsafe { SetPriorityClass(e.child.as_raw_handle() as _, class) };
+        if ok == 0 {
+            return Err("Windows didn't allow changing that client's priority.".into());
+        }
+        e.priority = level.to_string();
+        Ok(())
+    }
+
+    pub fn kill_and_wait(&self, pid: u32) -> Result<(), String> {
+        let mut v = self.0.lock().unwrap();
+        let e = v
+            .iter_mut()
+            .find(|e| e.child.id() == pid)
+            .ok_or("That client already closed.")?;
+        e.killed = true;
+        let _ = e.child.kill();
+        let _ = e.child.wait();
+        Ok(())
     }
 
     pub fn poll(&self) -> (Vec<Instance>, Vec<Exited>) {
@@ -111,6 +159,7 @@ impl Running {
                 label: e.label.clone(),
                 profile_id: e.profile_id.clone(),
                 secs: e.started.elapsed().as_secs(),
+                priority: e.priority.clone(),
                 game: None,
             })
             .collect();
