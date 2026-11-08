@@ -1,6 +1,6 @@
 [package]
 name = "umbra"
-version = "0.7.0"
+version = "0.8.0"
 description = "Umbra, a Roblox launcher"
 authors = ["Cloaxy"]
 edition = "2024"
