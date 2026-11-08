@@ -1,0 +1,54 @@
+use serde::{Deserialize, Serialize};
+use std::fs;
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub channel: String,
+    pub multi_instance: bool,
+
+    pub installed_version: Option<String>,
+
+    pub server_location: bool,
+
+    pub discord_enabled: bool,
+    pub discord_app_id: String,
+
+    pub discord_join_button: bool,
+
+    pub close_to_tray: bool,
+
+    pub auto_check_updates: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            channel: "production".into(),
+            multi_instance: true,
+            installed_version: None,
+            server_location: false,
+            discord_enabled: false,
+            discord_app_id: String::new(),
+            discord_join_button: false,
+            close_to_tray: false,
+            auto_check_updates: true,
+        }
+    }
+}
+
+fn file() -> std::path::PathBuf {
+    super::paths::base().join("settings.json")
+}
+
+pub fn load() -> Settings {
+    fs::read_to_string(file())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+pub fn save(s: &Settings) -> Result<(), String> {
+    fs::create_dir_all(super::paths::base()).map_err(|e| e.to_string())?;
+    fs::write(file(), serde_json::to_string_pretty(s).unwrap()).map_err(|e| e.to_string())
+}
