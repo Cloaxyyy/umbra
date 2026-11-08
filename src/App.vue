@@ -226,6 +226,9 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 12px;
     padding: 22px;
+    background: var(--panel);
+    border-color: var(--line-strong);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
     animation: pop 0.22s var(--ease-out) both;
 }
 .pair h2 {
