@@ -205,6 +205,7 @@ pub fn update(p: Profile) -> Result<Profile, String> {
         cur.flags = p.flags;
         cur.mods = p.mods;
         cur.custom_font = p.custom_font;
+        cur.theme = p.theme;
         Ok(cur.clone())
     })
 }
